@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Gölge Labirenti</title>
+    <!-- Şekilli Şüküllü Neon Font Eklendi -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg-color: #080c16; --canvas-bg: #121826; --border-color: #2a3d5e; --text-color: white; }
+        body.light-theme { --bg-color: #1a2536; --canvas-bg: #24344d; --border-color: #3b5985; --text-color: #f0f0f0; }
+        /* Font Orbitron olarak değiştirildi */
+        body { margin: 0; padding: 0; background-color: var(--bg-color); color: var(--text-color); font-family: 'Orbitron', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; height: 100vh; overflow: hidden; touch-action: none; transition: background-color 1s ease; }
+        
+        /* LOGO ALANI */
+        .logo-wrapper {
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+            margin: 15px 0 10px 0; padding: 8px 25px;
+            background: linear-gradient(145deg, #111a2e, #0a0f1c);
+            border: 2px solid #00f7ff; border-radius: 30px;
+            box-shadow: 0 0 15px rgba(0, 247, 255, 0.3), inset 0 0 10px rgba(0, 247, 255, 0.1);
+        }
+        .logo-wrapper h1 {
+            margin: 0; font-size: 20px; font-weight: 900; color: #ffd700;
+            text-shadow: 0 0 15px currentColor, 0 4px 5px rgba(0,0,0,0.8);
+            letter-spacing: 2px; text-transform: uppercase; transition: color 1s ease;
+        }
+        .logo-icon { font-size: 22px; filter: drop-shadow(0 0 5px #00f7ff); animation: pulseLogo 2s infinite ease-in-out; }
+        @keyframes pulseLogo { 0% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.15); opacity: 1; } 100% { transform: scale(1); opacity: 0.8; } }
+
+        /* YENİ GÖSTERGE (HUD) PANELİ */
+        .hud-bar {
+            display: flex; justify-content: space-between; align-items: center;
+            width: 92%; max-width: 420px; margin-bottom: 5px;
+            background: linear-gradient(145deg, #111a2e, #0a0f1c);
+            padding: 8px 12px; border-radius: 20px; border: 1px solid #3b5985;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.6), inset 0 2px 4px rgba(255,255,255,0.05);
+        }
+        .hud-gold-container {
+            display: flex; align-items: center; background: rgba(0,0,0,0.5);
+            padding: 4px 10px 4px 14px; border-radius: 20px; border: 1px solid rgba(255, 215, 0, 0.4);
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.6), 0 0 8px rgba(255, 215, 0, 0.2);
+            cursor: pointer; transition: 0.2s; user-select: none;
+        }
+        .hud-gold-container:active { transform: scale(0.95); box-shadow: none; }
+        .hud-life-container {
+            display: flex; align-items: center; background: rgba(0,0,0,0.5);
+            padding: 5px 14px; border-radius: 20px; border: 1px solid rgba(255, 71, 87, 0.4);
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.6), 0 0 8px rgba(255, 71, 87, 0.2);
+        }
+        .text-gold { color: #ffd700; font-weight: 900; text-shadow: 0 0 8px rgba(255, 215, 0, 0.8); font-size: 15px; letter-spacing: 0.5px; }
+        .text-life { color: #ff4757; font-weight: 900; text-shadow: 0 0 8px rgba(255, 71, 87, 0.8); font-size: 15px; letter-spacing: 0.5px; }
+        .add-gold-btn {
+            background: linear-gradient(145deg, #2ecc71, #27ae60); color: white;
+            border-radius: 50%; width: 22px; height: 22px;
+            display: inline-flex; justify-content: center; align-items: center;
+            font-size: 14px; font-weight: 900; margin-left: 8px;
+            box-shadow: 0 0 8px rgba(46, 204, 113, 0.6), inset 0 2px 2px rgba(255,255,255,0.4);
+            border: 1px solid #145a32;
+        }
+
+        .screen { display: none; flex-direction: column; align-items: center; width: 100%; height: 100%; overflow-y: auto; overflow-x: hidden; padding-bottom: 20px; }
+        .screen.active { display: flex; }
+        .screen h2 {
+            color: #ffffff; font-size: 16px; font-weight: 900; letter-spacing: 2px; margin: 5px 0 10px 0; padding: 6px 30px;
+            background: linear-gradient(90deg, transparent, rgba(0, 247, 255, 0.15), transparent);
+            border-bottom: 2px solid #00f7ff; text-shadow: 0 0 10px #00f7ff; text-transform: uppercase;
+        }
+        
+        /* CAROUSEL MENÜ */
+        .carousel-wrapper { width: 100%; height: 340px; position: relative; overflow: hidden; margin-top: 5px; }
+        .carousel-track { display: flex; position: absolute; left: 0; top: 15px; transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1); will-change: transform; }
+        .menu-card { width: 200px; height: 240px; flex-shrink: 0; margin: 0 12px; background: linear-gradient(160deg, #1e2a45 0%, #101828 100%); border: 2px solid var(--border-color); border-radius: 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px; box-sizing: border-box; box-shadow: 0 8px 20px rgba(0,0,0,0.6); opacity: 0.4; transform: scale(0.85); transition: all 0.4s ease; cursor: pointer; user-select: none; }
+        .menu-card.active-card { opacity: 1; transform: scale(1); border-color: #ffd700; box-shadow: 0 10px 30px rgba(255,215,0,0.3); background: linear-gradient(160deg, #2a3a5a 0%, #152036 100%); }
+        .card-icon-wrapper { width: 65px; height: 65px; border-radius: 50%; background: linear-gradient(145deg, #1e2a45, #111a2e); border: 2px solid #3b5985; display: flex; justify-content: center; align-items: center; margin-bottom: 15px; box-shadow: inset 0 4px 6px rgba(0,0,0,0.6), 0 4px 10px rgba(0,0,0,0.5); transition: all 0.4s ease; }
+        .active-card .card-icon-wrapper { border-color: #00f7ff; background: linear-gradient(145deg, #183b5e, #0a1f38); box-shadow: 0 0 15px rgba(0, 247, 255, 0.5), inset 0 0 10px rgba(0, 247, 255, 0.3); transform: scale(1.1); }
+        .card-icon { font-size: 32px; pointer-events: none; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5)); transition: 0.3s;}
+        .card-title { font-size: 18px; font-weight: 900; color: #a2a2bd; text-align: center; margin-bottom: 5px; pointer-events: none; letter-spacing: 1px; transition: 0.3s;}
+        .active-card .card-title { color: #ffffff; text-shadow: 0 0 10px rgba(0, 247, 255, 0.8); }
+        .card-desc { font-size: 11px; color: #777; text-align: center; margin-bottom: 15px; pointer-events: none; line-height: 1.3; transition: 0.3s;}
+        .active-card .card-desc { color: #a2a2bd; }
+        .card-action-btn { padding: 10px 22px; font-size: 13px; font-weight: 900; background: linear-gradient(145deg, #00f7ff, #0096a6); color: #000; border: none; border-radius: 12px; cursor: pointer; box-shadow: 0 5px 0 #005f6b, 0 10px 20px rgba(0, 247, 255, 0.4); opacity: 0; pointer-events: none; transition: 0.3s; text-transform: uppercase; letter-spacing: 1px; }
+        .active-card .card-action-btn { opacity: 1; pointer-events: auto; }
+        .active-card .card-action-btn:active { transform: translateY(4px); box-shadow: 0 1px 0 #005f6b, 0 5px 10px rgba(0, 247, 255, 0.4); }
+        
+        .carousel-nav { display: flex; gap: 30px; margin-top: 5px; }
+        .nav-arrow { width: 40px; height: 40px; background: linear-gradient(145deg, #1f2a40, #131b2c); border: 2px solid var(--border-color); border-radius: 50%; color: #00f7ff; font-size: 18px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 0 #0b0c10; user-select: none; flex-shrink: 0; transition: 0.1s;}
+        .nav-arrow:active { transform: translateY(3px); box-shadow: 0 1px 0 #0b0c10; }
+        
+        .menu-btn { width: 85%; max-width: 280px; padding: 12px; margin: 8px 0; font-size: 14px; font-weight: 900; background: linear-gradient(145deg, #1f2833, #11151a); color: #66fcf1; border: 2px solid #45a29e; border-radius: 12px; cursor: pointer; box-shadow: 0 4px 0 #0b0c10; transition: transform 0.1s; letter-spacing: 1px;}
+        .menu-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #0b0c10; }
+        
+        /* H-SLIDER (YATAY KARTLAR) */
+        .h-slider-wrapper { display: flex; align-items: center; width: 100%; max-width: 480px; gap: 4px; justify-content: center; margin: 8px 0; position: relative; }
+        .h-slider { display: flex; flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; padding: 10px 5px; gap: 10px; scroll-snap-type: x mandatory; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; cursor: grab; flex: 1; scrollbar-width: none; -ms-overflow-style: none; }
+        .h-slider::-webkit-scrollbar { display: none; }
+        
+        .h-card { flex: 0 0 105px; height: 145px; scroll-snap-align: center; background: linear-gradient(160deg, #1e2a45 0%, #101828 100%); border: 2px solid var(--border-color); border-radius: 14px; display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 10px 6px; text-align: center; color: var(--text-color); box-shadow: 0 4px 10px rgba(0,0,0,0.4), inset 0 2px 4px rgba(255,255,255,0.05); user-select: none; position: relative; transition: all 0.2s; overflow: hidden; }
+        .h-card:active { transform: scale(0.96); }
+        .h-card.locked { background: #0a0f1c; border-color: #222; opacity: 0.8; }
+        .h-card.unlocked { border-color: #ffd700; box-shadow: 0 0 10px rgba(255,215,0,0.2), 0 4px 8px rgba(0,0,0,0.4); }
+        .h-card.highlight { border-color: #4cd137; box-shadow: 0 0 10px rgba(76,209,55,0.2); }
+        
+        .h-icon-wrapper { width: 40px; height: 40px; background: rgba(0,0,0,0.4); border-radius: 12px; display: flex; justify-content: center; align-items: center; margin-bottom: 6px; border: 1px solid rgba(255,255,255,0.05); box-shadow: inset 0 2px 4px rgba(0,0,0,0.5); }
+        .h-icon { font-size: 22px; pointer-events: none; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5)); }
+        
+        .h-title { font-size: 11px; font-weight: 900; color: #fff; margin-bottom: 2px; pointer-events: none; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 2px #000;}
+        .h-desc { font-size: 9px; color: #a2a2bd; flex-grow: 1; pointer-events: none; line-height: 1.1; padding: 0 2px;}
+        
+        .h-btn { width: 90%; padding: 6px 0; font-size: 11px; font-weight: 900; border: none; border-radius: 6px; cursor: pointer; box-shadow: 0 2px 0 rgba(0,0,0,0.4); text-transform: uppercase; margin-top:auto; letter-spacing: 0.5px;}
+        .h-btn:active { transform: translateY(2px); box-shadow: none; }
+        
+        .lock-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; font-size: 30px; z-index: 10; border-radius: 12px; backdrop-filter: blur(1px);}
+        
+        /* Panel-box içeriği merkeze hizalamak için flex eklendi */
+        .panel-box { background: var(--canvas-bg); border: 2px solid var(--border-color); border-radius: 12px; padding: 12px; width: 85%; max-width: 380px; margin-bottom: 8px; text-align: center; box-shadow: 0 6px 15px rgba(0,0,0,0.4); display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .wheel-box { background: linear-gradient(145deg, #1a263b, #0d131f); border: 4px solid #ffd700; border-radius: 15px; padding: 15px; width: 200px; margin: 10px auto; box-shadow: 0 0 20px rgba(255,215,0,0.3); display: flex; justify-content: space-around; align-items: center; }
+        .wheel-reel { background: #05080f; border: 2px solid #45a29e; border-radius: 8px; width: 45px; height: 55px; font-size: 24px; display: flex; align-items: center; justify-content: center; overflow: hidden; box-shadow: inset 0 0 8px rgba(0,0,0,0.8); }
+        
+        @keyframes epicShake { 0% { transform: scale(1) rotate(0deg); } 20% { transform: scale(1.15) rotate(-8deg); } 40% { transform: scale(1.25) rotate(8deg); } 60% { transform: scale(1.15) rotate(-8deg); } 80% { transform: scale(1.25) rotate(8deg); } 100% { transform: scale(1) rotate(0deg); } }
+        @keyframes rewardPop { 0% { transform: scale(0.2); opacity: 0; } 70% { transform: scale(1.2); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+        .anim-shaking { animation: epicShake 0.4s ease-in-out infinite; }
+        .anim-reward { animation: rewardPop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        
+        .levels-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; width: 92%; max-width: 380px; margin-top: 10px; }
+        .level-btn { background: linear-gradient(145deg, #1e2a45, #101828); border: 2px solid var(--border-color); border-radius: 8px; padding: 10px 0; text-align: center; font-size: 14px; font-weight: 900; color: var(--text-color); cursor: pointer; position: relative; box-shadow: 0 3px 8px rgba(0,0,0,0.4); }
+        .level-btn:active { transform: scale(0.95); }
+        .level-btn.unlocked { border-color: #4cd137; box-shadow: 0 0 8px rgba(76,209,55,0.2); }
+        .level-btn.locked { opacity: 0.4; filter: grayscale(1); border-color: #222; }
+        .level-stars { font-size: 8px; position: absolute; bottom: 2px; width: 100%; text-align: center; color: #ffd700; letter-spacing: 1px; }
+        
+        #game-header-row { display: flex; justify-content: space-between; align-items: center; width: 95%; max-width: 450px; margin-bottom: 5px; }
+        #level-text { color: #ffd700; font-weight: 900; font-size: 15px; text-shadow: 0 2px 5px rgba(255,215,0,0.5); }
+        .action-btn { width: 32px; height: 32px; background: rgba(0,0,0,0.7); border: 2px solid #a2a2bd; border-radius: 8px; color: white; font-size: 14px; display: flex; align-items: center; justify-content: center; cursor: pointer; user-select: none; box-shadow: 0 3px 8px rgba(0,0,0,0.5); }
+        .action-btn:active { transform: scale(0.9); }
+        #ingame-inventory { display: flex; gap: 5px; align-items: center; }
+        .inv-btn { width: 34px; height: 34px; background: linear-gradient(145deg, #1e2a45, #101828); border: 2px solid #4cd137; border-radius: 50%; color: white; font-size: 15px; font-weight: bold; display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative; box-shadow: 0 3px 8px rgba(0,0,0,0.5);}
+        .inv-btn:active { transform: scale(0.9); }
+        .inv-count { position: absolute; bottom: -4px; right: -4px; background: #ff4757; font-size: 10px; padding: 2px 4px; border-radius: 8px; border: 1px solid #fff; font-weight: 900;}
+        #canvas-container { background-color: var(--canvas-bg); border: 3px solid var(--border-color); border-radius: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8); display: flex; position: relative; overflow: hidden; touch-action: none;}
+        canvas { display: block; touch-action: none; }
+        .msg-overlay { position: absolute; font-weight: 900; text-align: center; text-shadow: 0 4px 15px rgba(0,0,0,0.9); opacity: 0; pointer-events: none; transition: 0.2s ease-in-out; z-index: 20; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.5); display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(15, 22, 38, 0.95); border-radius: 16px; padding: 15px 25px; border: 2px solid #00f7ff; box-shadow: 0 10px 40px rgba(0,0,0,0.9), 0 0 20px rgba(0,247,255,0.3); min-width: 160px; }
+        .show-msg { opacity: 1 !important; transform: translate(-50%, -50%) scale(1) !important; pointer-events: auto !important; }
+        
+        .daily-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; width: 90%; max-width: 350px; margin: 0 auto; }
+        .daily-item { background: var(--canvas-bg); border: 2px solid var(--border-color); border-radius: 8px; padding: 8px 4px; text-align: center; color: #777; font-size: 12px;}
+        .daily-item.claimed { border-color: #4cd137; color: #4cd137; opacity: 0.6; }
+        .daily-item.today { border-color: #ffd700; color: #ffd700; box-shadow: 0 0 8px rgba(255,215,0,0.4); font-weight: bold; }
+        .daily-item.day7 { grid-column: span 3; background: linear-gradient(145deg, #3a2500, #1a1300); border-color: #ffd700; }
+        
+        /* BANNER REKLAM ALANI */
+        #ad-banner-container {
+            position: fixed; bottom: 0; left: 0; width: 100%; height: 50px;
+            background-color: #05080f; color: #777;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 12px; font-weight: 900; letter-spacing: 2px;
+            border-top: 1px solid #1a2536; z-index: 10000;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="logo-wrapper">
+        <span class="logo-icon">🌀</span>
+        <h1 id="game-title">GÖLGE LABİRENTİ</h1>
+        <span class="logo-icon">🌀</span>
+    </div>
+    
+    <div class="hud-bar">
+        <div class="hud-gold-container" onclick="showScreen('screen-gold-shop')" title="Altın Satın Al">
+            <span class="hud-item text-gold">💰 <span id="hud-gold">0</span></span>
+            <span class="add-gold-btn">+</span>
+        </div>
+        <div class="hud-life-container">
+            <span class="hud-item text-life" id="hud-life">CAN: 10 ♥</span>
+        </div>
+    </div>
+
+    <!-- ALTIN SATIN ALMA EKRANI -->
+    <div id="screen-gold-shop" class="screen">
+        <h2>ALTIN MAĞAZASI</h2>
+        <p style="color: #a2a2bd; margin-top: 0; text-align:center; font-size:11px;">Gerçek parayla altın al!</p>
+        <div class="h-slider-wrapper">
+            <div class="nav-arrow" onmousedown="startScrollSlider('gold-slider', -1)" onmouseup="stopScrollSlider()" onmouseleave="stopScrollSlider()" ontouchstart="startScrollSlider('gold-slider', -1)" ontouchend="stopScrollSlider()" ontouchcancel="stopScrollSlider()">❮</div>
+            <div class="h-slider" id="gold-slider">
+                <div class="h-card highlight">
+                    <div class="h-icon-wrapper"><div class="h-icon">💰</div></div>
+                    <div class="h-title">Avuç Altın</div><div class="h-desc">+250 Altın</div>
+                    <button class="h-btn" style="background:#2ecc71; color:white;" onclick="simulateIAP('Avuç Altın', 250, '14,99 ₺')">14,99 ₺</button>
+                </div>
+                <div class="h-card highlight">
+                    <div class="h-icon-wrapper"><div class="h-icon">🛍️</div></div>
+                    <div class="h-title">Altın Kesesi</div><div class="h-desc">+750 Altın</div>
+                    <button class="h-btn" style="background:#2ecc71; color:white;" onclick="simulateIAP('Altın Kesesi', 750, '39,99 ₺')">39,99 ₺</button>
+                </div>
+                <div class="h-card highlight">
+                    <div class="h-icon-wrapper"><div class="h-icon">🧰</div></div>
+                    <div class="h-title">Sandık</div><div class="h-desc">+2000 Altın</div>
+                    <button class="h-btn" style="background:#2ecc71; color:white;" onclick="simulateIAP('Hazine Sandığı', 2000, '89,99 ₺')">89,99 ₺</button>
+                </div>
+                <div class="h-card highlight" style="background: linear-gradient(160deg, #4a3000, #1a1000); border-color:#ffd700;">
+                    <div class="h-icon-wrapper" style="background:rgba(255,215,0,0.2);"><div class="h-icon">👑</div></div>
+                    <div class="h-title" style="color:#ffd700;">Kralın Hazinesi</div><div class="h-desc" style="color:#e6b07e;">+5000 Altın</div>
+                    <button class="h-btn" style="background:#2ecc71; color:white;" onclick="simulateIAP('Kralın Hazinesi', 5000, '199,99 ₺')">199,99 ₺</button>
+                </div>
+            </div>
+            <div class="nav-arrow" onmousedown="startScrollSlider('gold-slider', 1)" onmouseup="stopScrollSlider()" onmouseleave="stopScrollSlider()" ontouchstart="startScrollSlider('gold-slider', 1)" ontouchend="stopScrollSlider()" ontouchcancel="stopScrollSlider()">❯</div>
+        </div>
+        <button class="menu-btn" onclick="showScreen('screen-menu')">◀ MENÜYE DÖN</button>
+    </div>
+
+    <!-- ANA MENÜ -->
+    <div id="screen-menu" class="screen active">
+        <div class="carousel-wrapper" id="carouselWrapper">
+            <div class="carousel-track" id="carouselTrack">
+                <div class="menu-card active-card">
+                    <div class="card-icon-wrapper"><div class="card-icon">▶️</div></div>
+                    <div class="card-title">OYNA</div><div class="card-desc">Maceraya devam et</div>
+                    <button class="card-action-btn" onclick="continueGame()">BAŞLA</button>
+                </div>
+                <div class="menu-card">
+                    <div class="card-icon-wrapper"><div class="card-icon">📚</div></div>
+                    <div class="card-title">BÖLÜMLER</div><div class="card-desc">Evrenleri keşfet</div>
+                    <button class="card-action-btn" onclick="showScreen('screen-catalog')">İNCELE</button>
+                </div>
+                <div class="menu-card">
+                    <div class="card-icon-wrapper"><div class="card-icon">🛒</div></div>
+                    <div class="card-title">MARKET</div><div class="card-desc">Eşya ve Kostüm Al</div>
+                    <button class="card-action-btn" onclick="showScreen('screen-shop')">GİT</button>
+                </div>
+                <div class="menu-card">
+                    <div class="card-icon-wrapper"><div class="card-icon">🏆</div></div>
+                    <div class="card-title">KUPA ODASI</div><div class="card-desc">Başarımları tamamla</div>
+                    <button class="card-action-btn" onclick="showScreen('screen-achievements')">BAK</button>
+                </div>
+                <div class="menu-card">
+                    <div class="card-icon-wrapper"><div class="card-icon">🎯</div></div>
+                    <div class="card-title">GÖREVLER</div><div class="card-desc">Hedefleri bitir</div>
+                    <button class="card-action-btn" onclick="showScreen('screen-quests')">AÇ</button>
+                </div>
+                <div class="menu-card">
+                    <div class="card-icon-wrapper"><div class="card-icon">🎁</div></div>
+                    <div class="card-title">BONUS</div><div class="card-desc">Sandık, Çark, Ödül</div>
+                    <button class="card-action-btn" onclick="showScreen('screen-bonus')">TOPLA</button>
+                </div>
+                <div class="menu-card">
+                    <div class="card-icon-wrapper"><div class="card-icon">📖</div></div>
+                    <div class="card-title">REHBER</div><div class="card-desc">Nasıl oynanır?</div>
+                    <button class="card-action-btn" onclick="showScreen('screen-howtoplay')">OKU</button>
+                </div>
+                <div class="menu-card">
+                    <div class="card-icon-wrapper"><div class="card-icon">⚙️</div></div>
+                    <div class="card-title">AYARLAR</div><div class="card-desc">Ses, tema ve veri</div>
+                    <button class="card-action-btn" onclick="showScreen('screen-settings')">DÜZENLE</button>
+                </div>
+            </div>
+        </div>
+        <div class="carousel-nav">
+            <div class="nav-arrow" onmousedown="startSlide(-1)" onmouseup="stopSlide()" onmouseleave="stopSlide()" ontouchstart="startSlide(-1)" ontouchend="stopSlide()" ontouchcancel="stopSlide()">❮</div>
+            <div class="nav-arrow" onmousedown="startSlide(1)" onmouseup="stopSlide()" onmouseleave="stopSlide()" ontouchstart="startSlide(1)" ontouchend="stopSlide()" ontouchcancel="stopSlide()">❯</div>
+        </div>
+    </div>
+
+    <!-- BONUS HEDİYELER -->
+    <div id="screen-bonus" class="screen">
+        <h2>BONUS HEDİYELER</h2>
+        <p style="color: #a2a2bd; margin-top: 0; font-size:11px;">Ekstra ödülleri topla!</p>
+        <div class="h-slider-wrapper">
+            <div class="nav-arrow" onmousedown="startScrollSlider('bonus-slider', -1)" onmouseup="stopScrollSlider()" onmouseleave="stopScrollSlider()" ontouchstart="startScrollSlider('bonus-slider', -1)" ontouchend="stopScrollSlider()" ontouchcancel="stopScrollSlider()">❮</div>
+            <div class="h-slider" id="bonus-slider">
+                <div class="h-card">
+                    <div class="h-icon-wrapper" style="background: rgba(211,84,0,0.3); border-color:#d35400;"><div class="h-icon">🎁</div></div>
+                    <div class="h-title">Gizemli Sandık</div><div class="h-desc" id="card-box-timer">Açılmayı bekliyor</div>
+                    <button class="h-btn" style="background:#d35400; color:white; box-shadow:0 2px 0 #9c3c00;" onclick="openMysteryBox()">AÇ</button>
+                </div>
+                <div class="h-card">
+                    <div class="h-icon-wrapper" style="background: rgba(243,156,18,0.3); border-color:#f39c12;"><div class="h-icon">🎡</div></div>
+                    <div class="h-title">Şans Çarkı</div><div class="h-desc">Çevir altın kazan</div>
+                    <button class="h-btn" style="background:#f39c12; color:white; box-shadow:0 2px 0 #b3700b;" onclick="showScreen('screen-spin')">GİT</button>
+                </div>
+                <div class="h-card">
+                    <div class="h-icon-wrapper" style="background: rgba(46,204,113,0.3); border-color:#2ecc71;"><div class="h-icon">📅</div></div>
+                    <div class="h-title">Günlük Ödül</div><div class="h-desc">Her gün gel katla</div>
+                    <button class="h-btn" style="background:#2ecc71; color:white; box-shadow:0 2px 0 #1f8c4d;" onclick="checkDailyReward()">GİT</button>
+                </div>
+            </div>
+            <div class="nav-arrow" onmousedown="startScrollSlider('bonus-slider', 1)" onmouseup="stopScrollSlider()" onmouseleave="stopScrollSlider()" ontouchstart="startScrollSlider('bonus-slider', 1)" ontouchend="stopScrollSlider()" ontouchcancel="stopScrollSlider()">❯</div>
+        </div>
+        <button class="menu-btn" onclick="showScreen('screen-menu')">◀ MENÜYE DÖN</button>
+    </div>
+
+    <!-- İKİ KATLI MARKET EKRANI -->
+    <div id="screen-shop" class="screen">
+        <h2>MARKET</h2>
+        
+        <div style="color:#a2a2bd; font-size:12px; margin-top:5px; margin-bottom:2px; font-weight:bold;">🔥 Taktiksel Eşyalar</div>
+        <div class="h-slider-wrapper" style="margin:0;">
+            <div class="nav-arrow" onmousedown="startScrollSlider('shop-items-slider', -1)" onmouseup="stopScrollSlider()" onmouseleave="stopScrollSlider()" ontouchstart="startScrollSlider('shop-items-slider', -1)" ontouchend="stopScrollSlider()" ontouchcancel="stopScrollSlider()" style="width:30px; height:30px; font-size:14px;">❮</div>
+            <div class="h-slider" id="shop-items-slider" style="padding:5px;"></div>
+            <div class="nav-arrow" onmousedown="startScrollSlider('shop-items-slider', 1)" onmouseup="stopScrollSlider()" onmouseleave="stopScrollSlider()" ontouchstart="startScrollSlider('shop-items-slider', 1)" ontouchend="stopScrollSlider()" ontouchcancel="stopScrollSlider()" style="width:30px; height:30px; font-size:14px;">❯</div>
+        </div>
+
+        <div style="color:#a2a2bd; font-size:12px; margin-top:10px; margin-bottom:2px; font-weight:bold;">👕 Karakter Kostümleri</div>
+        <div class="h-slider-wrapper" style="margin:0;">
+            <div class="nav-arrow" onmousedown="startScrollSlider('shop-skins-slider', -1)" onmouseup="stopScrollSlider()" onmouseleave="stopScrollSlider()" ontouchstart="startScrollSlider('shop-skins-slider', -1)" ontouchend="stopScrollSlider()" ontouchcancel="stopScrollSlider()" style="width:30px; height:30px; font-size:14px;">❮</div>
+            <div class="h-slider" id="shop-skins-slider" style="padding:5px;"></div>
+            <div class="nav-arrow" onmousedown="startScrollSlider('shop-skins-slider', 1)" onmouseup="stopScrollSlider()" onmouseleave="stopScrollSlider()" ontouchstart="startScrollSlider('shop-skins-slider', 1)" ontouchend="stopScrollSlider()" ontouchcancel="stopScrollSlider()" style="width:30px; height:30px; font-size:14px;">❯</div>
+        </div>
+        <button class="menu-btn" onclick="showScreen('screen-menu')" style="margin-top:10px;">◀ MENÜYE DÖN</button>
+    </div>
+
+    <!-- BAŞARIMLAR EKRANI -->
+    <div id="screen-achievements" class="screen">
+        <h2>KUPA ODASI</h2>
+        <div style="color:#a2a2bd; font-size:11px;">Başarımları topla ↔️</div>
+        <div class="h-slider-wrapper">
+            <div class="nav-arrow" onmousedown="startScrollSlider('achievements-slider', -1)" onmouseup="stopScrollSlider()" onmouseleave="stopScrollSlider()" ontouchstart="startScrollSlider('achievements-slider', -1)" ontouchend="stopScrollSlider()" ontouchcancel="stopScrollSlider()">❮</div>
+            <div class="h-slider" id="achievements-slider"></div>
+            <div class="nav-arrow" onmousedown="startScrollSlider('achievements-slider', 1)" onmouseup="stopScrollSlider()" onmouseleave="stopScrollSlider()" ontouchstart="startScrollSlider('achievements-slider', 1)" ontouchend="stopScrollSlider()" ontouchcancel="stopScrollSlider()">❯</div>
+        </div>
+        <button class="menu-btn" onclick="showScreen('screen-menu')">◀ MENÜYE DÖN</button>
+    </div>
+
+    <!-- İKİ KATLI GÖREVLER EKRANI -->
+    <div id="screen-quests" class="screen">
+        <h2>GÖREVLER</h2>
+        
+        <div style="color:#a2a2bd; font-size:12px; margin-top:5px; margin-bottom:2px; font-weight:bold;">🎯 Günlük Görevler</div>
+        <div class="h-slider-wrapper" style="margin:0;">
+            <div class="nav-arrow" onmousedown="startScrollSlider('quests-daily-slider', -1)" onmouseup="stopScrollSlider()" onmouseleave="stopScrollSlider()" ontouchstart="startScrollSlider('quests-daily-slider', -1)" ontouchend="stopScrollSlider()" ontouchcancel="stopScrollSlider()" style="width:30px; height:30px; font-size:14px;">❮</div>
+            <div class="h-slider" id="quests-daily-slider" style="padding:5px;"></div>
+            <div class="nav-arrow" onmousedown="startScrollSlider('quests-daily-slider', 1)" onmouseup="stopScrollSlider()" onmouseleave="stopScrollSlider()" ontouchstart="startScrollSlider('quests-daily-slider', 1)" ontouchend="stopScrollSlider()" ontouchcancel="stopScrollSlider()" style="width:30px; height:30px; font-size:14px;">❯</div>
+        </div>
+
+        <div style="color:#a2a2bd; font-size:12px; margin-top:10px; margin-bottom:2px; font-weight:bold;">🔥 Haftalık Görevler</div>
+        <div class="h-slider-wrapper" style="margin:0;">
+            <div class="nav-arrow" onmousedown="startScrollSlider('quests-weekly-slider', -1)" onmouseup="stopScrollSlider()" onmouseleave="stopScrollSlider()" ontouchstart="startScrollSlider('quests-weekly-slider', -1)" ontouchend="stopScrollSlider()" ontouchcancel="stopScrollSlider()" style="width:30px; height:30px; font-size:14px;">❮</div>
+            <div class="h-slider" id="quests-weekly-slider" style="padding:5px;"></div>
+            <div class="nav-arrow" onmousedown="startScrollSlider('quests-weekly-slider', 1)" onmouseup="stopScrollSlider()" onmouseleave="stopScrollSlider()" ontouchstart="startScrollSlider('quests-weekly-slider', 1)" ontouchend="stopScrollSlider()" ontouchcancel="stopScrollSlider()" style="width:30px; height:30px; font-size:14px;">❯</div>
+        </div>
+        <button class="menu-btn" onclick="showScreen('screen-menu')" style="margin-top:10px;">◀ MENÜYE DÖN</button>
+    </div>
+
+    <!-- İKİ KATLI AYARLAR EKRANI -->
+    <div id="screen-settings" class="screen">
+        <h2>AYARLAR</h2>
+        
+        <div style="color:#a2a2bd; font-size:12px; margin-top:5px; margin-bottom:2px; font-weight:bold;">🎵 İşitsel Ayarlar</div>
+        <div class="h-slider-wrapper" style="margin:0;">
+            <div class="nav-arrow" onmousedown="startScrollSlider('settings-audio-slider', -1)" onmouseup="stopScrollSlider()" onmouseleave="stopScrollSlider()" ontouchstart="startScrollSlider('settings-audio-slider', -1)" ontouchend="stopScrollSlider()" ontouchcancel="stopScrollSlider()" style="width:30px; height:30px; font-size:14px;">❮</div>
+            <div class="h-slider" id="settings-audio-slider" style="padding:5px;"></div>
+            <div class="nav-arrow" onmousedown="startScrollSlider('settings-audio-slider', 1)" onmouseup="stopScrollSlider()" onmouseleave="stopScrollSlider()" ontouchstart="startScrollSlider('settings-audio-slider', 1)" ontouchend="stopScrollSlider()" ontouchcancel="stopScrollSlider()" style="width:30px; height:30px; font-size:14px;">❯</div>
+        </div>
+
+        <div style="color:#a2a2bd; font-size:12px; margin-top:10px; margin-bottom:2px; font-weight:bold;">✨ Görsel & Performans</div>
+        <div class="h-slider-wrapper" style="margin:0;">
+            <div class="nav-arrow" onmousedown="startScrollSlider('settings-visual-slider', -1)" onmouseup="stopScrollSlider()" onmouseleave="stopScrollSlider()" ontouchstart="startScrollSlider('settings-visual-slider', -1)" ontouchend="stopScrollSlider()" ontouchcancel="stopScrollSlider()" style="width:30px; height:30px; font-size:14px;">❮</div>
+            <div class="h-slider" id="settings-visual-slider" style="padding:5px;"></div>
+            <div class="nav-arrow" onmousedown="startScrollSlider('settings-visual-slider', 1)" onmouseup="stopScrollSlider()" onmouseleave="stopScrollSlider()" ontouchstart="startScrollSlider('settings-visual-slider', 1)" ontouchend="stopScrollSlider()" ontouchcancel="stopScrollSlider()" style="width:30px; height:30px; font-size:14px;">❯</div>
+        </div>
+        
+        <button class="menu-btn" onclick="resetGameData()" style="background: linear-gradient(145deg, #c0392b, #a53125); border-color:#e74c3c; margin-top:15px;">🗑️ Tüm Verileri Sıfırla</button>
+        <button class="menu-btn" onclick="showScreen('screen-menu')" style="margin-top:2px;">◀ MENÜYE DÖN</button>
+    </div>
+
+    <!-- İKİ KATLI NASIL OYNANIR (REHBER) EKRANI -->
+    <div id="screen-howtoplay" class="screen">
+        <h2>REHBER</h2>
+        
+        <div style="color:#a2a2bd; font-size:12px; margin-top:5px; margin-bottom:2px; font-weight:bold;">🎯 Oyun Mekanikleri</div>
+        <div class="h-slider-wrapper" style="margin:0;">
+            <div class="nav-arrow" onmousedown="startScrollSlider('how-mech-slider', -1)" onmouseup="stopScrollSlider()" onmouseleave="stopScrollSlider()" ontouchstart="startScrollSlider('how-mech-slider', -1)" ontouchend="stopScrollSlider()" ontouchcancel="stopScrollSlider()" style="width:30px; height:30px; font-size:14px;">❮</div>
+            <div class="h-slider" id="how-mech-slider" style="padding:5px;">
+                <div class="h-card">
+                    <div class="h-icon-wrapper" style="background:rgba(46,204,113,0.3); border-color:#2ecc71;"><div class="h-icon">🌀</div></div>
+                    <div class="h-title">Amacın Ne?</div>
+                    <div class="h-desc" style="white-space: normal; line-height: 1.3;">Kapıya ulaş! Kilitliyse (🚪), önce anahtarı (🔑) bulmalısın.</div>
+                </div>
+                <div class="h-card">
+                    <div class="h-icon-wrapper" style="background:rgba(52,152,219,0.3); border-color:#3498db;"><div class="h-icon">🕹️</div></div>
+                    <div class="h-title">Kontroller</div>
+                    <div class="h-desc" style="white-space: normal; line-height: 1.3;">Ekrana basılı tutup joystick ile sürükle. Köşelerde kaydır.</div>
+                </div>
+                <div class="h-card">
+                    <div class="h-icon-wrapper" style="background:rgba(231,76,60,0.3); border-color:#e74c3c;"><div class="h-icon">⚠️</div></div>
+                    <div class="h-title">Tehlikeler</div>
+                    <div class="h-desc" style="white-space: normal; line-height: 1.3;">Canavarlara yakalanma, tuzakların inmesini bekle!</div>
+                </div>
+                <div class="h-card">
+                    <div class="h-icon-wrapper" style="background:rgba(155,89,182,0.3); border-color:#9b59b6;"><div class="h-icon">🌫️</div></div>
+                    <div class="h-title">Karanlık Sis</div>
+                    <div class="h-desc" style="white-space: normal; line-height: 1.3;">100. bölümden sonra görüşün daralır, dikkatli ol!</div>
+                </div>
+            </div>
+            <div class="nav-arrow" onmousedown="startScrollSlider('how-mech-slider', 1)" onmouseup="stopScrollSlider()" onmouseleave="stopScrollSlider()" ontouchstart="startScrollSlider('how-mech-slider', 1)" ontouchend="stopScrollSlider()" ontouchcancel="stopScrollSlider()" style="width:30px; height:30px; font-size:14px;">❯</div>
+        </div>
+
+        <div style="color:#a2a2bd; font-size:12px; margin-top:10px; margin-bottom:2px; font-weight:bold;">🎒 Eşyalar Ne İşe Yarar?</div>
+        <div class="h-slider-wrapper" style="margin:0;">
+            <div class="nav-arrow" onmousedown="startScrollSlider('how-items-slider', -1)" onmouseup="stopScrollSlider()" onmouseleave="stopScrollSlider()" ontouchstart="startScrollSlider('how-items-slider', -1)" ontouchend="stopScrollSlider()" ontouchcancel="stopScrollSlider()" style="width:30px; height:30px; font-size:14px;">❮</div>
+            <div class="h-slider" id="how-items-slider" style="padding:5px;">
+                <div class="h-card">
+                    <div class="h-icon-wrapper"><div class="h-icon">⛏️</div></div>
+                    <div class="h-title">Duvar Kırıcı</div>
+                    <div class="h-desc" style="white-space: normal; line-height: 1.3;">Kullan ve karşındaki duvarın üzerine yürü, anında yıkılır.</div>
+                </div>
+                <div class="h-card">
+                    <div class="h-icon-wrapper"><div class="h-icon">❄️</div></div>
+                    <div class="h-title">Dondurucu</div>
+                    <div class="h-desc" style="white-space: normal; line-height: 1.3;">Kullandığında haritadaki tüm canavarları dondurur.</div>
+                </div>
+                <div class="h-card">
+                    <div class="h-icon-wrapper"><div class="h-icon">👻</div></div>
+                    <div class="h-title">Hayalet</div>
+                    <div class="h-desc" style="white-space: normal; line-height: 1.3;">Canavarların içinden hiç zarar görmeden geçebilirsin.</div>
+                </div>
+            </div>
+            <div class="nav-arrow" onmousedown="startScrollSlider('how-items-slider', 1)" onmouseup="stopScrollSlider()" onmouseleave="stopScrollSlider()" ontouchstart="startScrollSlider('how-items-slider', 1)" ontouchend="stopScrollSlider()" ontouchcancel="stopScrollSlider()" style="width:30px; height:30px; font-size:14px;">❯</div>
+        </div>
+        <button class="menu-btn" onclick="showScreen('screen-menu')" style="margin-top:10px;">◀ MENÜYE DÖN</button>
+    </div>
+
+
+    <div id="screen-catalog" class="screen">
+        <h2>KİTAPLIK (EVRENLER)</h2>
+        <div style="color:#a2a2bd; font-size:11px;">Keşfetmek için kaydır ↔️</div>
+        <div class="h-slider-wrapper">
+            <div class="nav-arrow" onmousedown="startScrollSlider('catalog-container', -1)" onmouseup="stopScrollSlider()" onmouseleave="stopScrollSlider()" ontouchstart="startScrollSlider('catalog-container', -1)" ontouchend="stopScrollSlider()" ontouchcancel="stopScrollSlider()">❮</div>
+            <div class="h-slider" id="catalog-container"></div>
+            <div class="nav-arrow" onmousedown="startScrollSlider('catalog-container', 1)" onmouseup="stopScrollSlider()" onmouseleave="stopScrollSlider()" ontouchstart="startScrollSlider('catalog-container', 1)" ontouchend="stopScrollSlider()" ontouchcancel="stopScrollSlider()">❯</div>
+        </div>
+        <button class="menu-btn" onclick="showScreen('screen-menu')">◀ MENÜYE DÖN</button>
+    </div>
+
+    <div id="screen-levels" class="screen">
+        <h2 id="levels-title" style="margin-bottom: 5px;">EVREN ADI</h2>
+        <div class="levels-grid" id="levels-container"></div>
+        <button class="menu-btn" onclick="showScreen('screen-catalog')" style="margin-top:15px;">◀ EVRENLERE DÖN</button>
+    </div>
+
+    <div id="screen-spin" class="screen">
+        <h2>ŞANS ÇARKI</h2>
+        <div class="panel-box" style="padding: 15px;">
+            <div class="wheel-box"><div class="wheel-reel" id="reel1">🍒</div><div class="wheel-reel" id="reel2">💎</div><div class="wheel-reel" id="reel3">⭐</div></div>
+            <div id="spin-result" style="font-size: 15px; color: #ffd700; font-weight:bold; margin: 10px 0;">Şansını dene!</div>
+            <button class="menu-btn" id="spin-btn" onclick="spinWheelAction()" style="background: linear-gradient(145deg, #e74c3c, #c0392b); border-color:#e74c3c;">🎡 ÇARKI ÇEVİR!</button>
+        </div>
+        <button class="menu-btn" onclick="showScreen('screen-bonus')">◀ GERİ DÖN</button>
+    </div>
+
+    <div id="screen-daily" class="screen">
+        <h2>GÜNLÜK ÖDÜL</h2>
+        <div class="panel-box" style="padding:10px;">
+            <div class="daily-grid" id="daily-container"></div>
+            <button class="menu-btn" onclick="claimDailyReward()" style="background: linear-gradient(145deg, #2ecc71, #27ae60); border-color:#2ecc71; margin-top:10px;">💰 ÖDÜLÜ AL</button>
+        </div>
+        <button class="menu-btn" onclick="showScreen('screen-bonus')">◀ GERİ DÖN</button>
+    </div>
+
+    <div id="mystery-overlay" class="msg-overlay">
+        <div style="font-size: 54px;" id="box-icon" class="anim-shaking">🎁</div>
+        <h2 style="color: #ffd700; margin: 10px 0 5px 0;">GİZEMLİ SANDIK</h2>
+        <div id="mystery-reward-text" style="font-size: 14px; color: #fff; margin-bottom: 15px;">Sihri çözülüyor...</div>
+        <button class="menu-btn" id="mystery-close-btn" onclick="closeMysteryOverlay()" style="display:none; background:#2ecc71; border-color:#27ae60;">HARİKA!</button>
+    </div>
+
+    <!-- ÖDÜLLÜ BÖLÜM SONU EKRANI -->
+    <div id="screen-reward" class="screen">
+        <h2 style="color: #4cd137; border-color: #4cd137; text-shadow: 0 0 10px #4cd137;">BÖLÜM GEÇİLDİ!</h2>
+        <div class="panel-box" style="padding: 25px 15px; margin-top: 10px;">
+            <div id="reward-stars" style="font-size: 36px; letter-spacing: 5px; margin-bottom: 10px; color: #ffd700; text-shadow: 0 0 15px rgba(255,215,0,0.8);">⭐⭐⭐</div>
+            <div style="color: #a2a2bd; font-size: 14px; margin-bottom: 5px;">Kazanılan Altın</div>
+            <div id="reward-gold-amount" style="color: #ffd700; font-size: 32px; font-weight: 900; margin-bottom: 25px;">+10 💰</div>
+            
+            <!-- X mantığı kalktı, direkt 50 Altın butonu eklendi -->
+            <button id="btn-multiply" class="menu-btn" onclick="multiplyReward()" style="background: linear-gradient(145deg, #f39c12, #d35400); border-color:#f39c12; margin-bottom: 12px; padding: 14px; font-size: 14px; box-shadow: 0 0 15px rgba(243, 156, 18, 0.4); animation: pulseLogo 1.5s infinite;">📺 +50 ALTIN KAZAN (REKLAM İZLE)</button>
+            <button class="menu-btn" onclick="nextLevel()" style="background: linear-gradient(145deg, #2ecc71, #27ae60); border-color:#2ecc71; padding: 12px;">SONRAKİ BÖLÜM ▶</button>
+            <button class="menu-btn" onclick="goToMenuFromReward()" style="background: linear-gradient(145deg, #2c3e50, #1a252f); border-color:#34495e; padding: 12px; margin-top: 5px;">🏠 ANA MENÜ</button>
+        </div>
+    </div>
+
+    <div id="screen-game" class="screen">
+        <div id="game-header-row">
+            <div style="display:flex; align-items:center; gap:6px;">
+                <div class="action-btn" onclick="togglePause()">⏸️</div>
+                <span id="level-text">BÖLÜM 1</span>
+            </div>
+            <div style="display:flex; gap:6px; align-items:center;">
+                <div class="action-btn" onclick="showScreen('screen-shop')" style="border-color:#ffd700; color:#ffd700;">🛒</div>
+                <div id="ingame-inventory">
+                    <div class="inv-btn" onclick="usePickaxe()" style="border-color:#e67e22;">⛏️<span class="inv-count" id="inv-pickaxe-c">0</span></div>
+                    <div class="inv-btn" onclick="useFreeze()">❄️<span class="inv-count" id="inv-freeze-c">0</span></div>
+                    <div class="inv-btn" onclick="useGhost()">👻<span class="inv-count" id="inv-ghost-c">0</span></div>
+                </div>
+            </div>
+        </div>
+        <div id="virtual-joystick" style="display: none; position: fixed; width: 130px; height: 130px; background: rgba(255, 255, 255, 0.1); border: 2px solid rgba(255, 255, 255, 0.2); border-radius: 50%; pointer-events: none; z-index: 9999; transform: translate(-50%, -50%);"><div id="joystick-knob" style="position: absolute; width: 50px; height: 50px; background: rgba(255, 215, 0, 0.6); border-radius: 50%; top: 50%; left: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 15px rgba(255, 215, 0, 0.8);"></div></div>
+        <div id="canvas-container">
+            <canvas id="gameCanvas"></canvas>
+            <div id="win-msg" class="msg-overlay"></div>
+            <div id="lose-msg" class="msg-overlay" style="border-color:#ff4757;">
+                <span style='color:#ff4757; font-size:26px; margin-bottom:10px; text-shadow:0 2px 5px #000;'>YAKALANDIN!</span>
+                <button class="menu-btn" onclick="goToMenu()" style="background:linear-gradient(145deg, #2c3e50, #1a252f); border-color:#34495e;">🏠 ANA MENÜ</button>
+            </div>
+            <div id="pause-menu" class="msg-overlay">
+                <h2 style="color: #ffd700; margin-top:0; margin-bottom: 10px;">DURAKLATILDI</h2>
+                <button class="menu-btn" onclick="togglePause()" style="background:linear-gradient(145deg, #2ecc71, #27ae60); border-color:#2ecc71;">▶ DEVAM ET</button>
+                <button class="menu-btn" onclick="restartLevel()" style="background: linear-gradient(145deg, #c0392b, #a53125); border-color:#e74c3c;">🔄 BAŞTAN BAŞLA</button>
+                <button class="menu-btn" onclick="goToMenu()" style="background: linear-gradient(145deg, #2c3e50, #1a252f); border-color:#34495e;">🏠 ANA MENÜ</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- BANNER REKLAM YER TUTUCUSU -->
+    <div id="ad-banner-container">
+        <span>--- BANNER REKLAM ALANI (320x50) ---</span>
+    </div>
+
+    <!-- JAVASCRIPT KODLARI -->
+    <script>
+        let scrollInterval = null;
+        function scrollSlider(id, dir) { const container = document.getElementById(id); if(container) { container.scrollBy({ left: dir * 130, behavior: 'smooth' }); } }
+        function startScrollSlider(id, dir) { triggerHaptic(); if(scrollInterval) clearInterval(scrollInterval); scrollSlider(id, dir); scrollInterval = setInterval(() => { scrollSlider(id, dir); }, 250); }
+        function stopScrollSlider() { if(scrollInterval) { clearInterval(scrollInterval); scrollInterval = null; } }
+
+        let slideInterval = null;
+        function startSlide(dir) { triggerHaptic(); if(slideInterval) clearInterval(slideInterval); slideCard(dir); slideInterval = setInterval(() => { slideCard(dir); }, 300); }
+        function stopSlide() { if(slideInterval) { clearInterval(slideInterval); slideInterval = null; } }
+
+        function initDragToScroll() {
+            document.querySelectorAll('.h-slider').forEach(slider => {
+                let isDown = false, startX, scrollLeft;
+                slider.addEventListener('mousedown', (e) => { isDown = true; startX = e.pageX - slider.offsetLeft; scrollLeft = slider.scrollLeft; slider.style.cursor = 'grabbing'; slider.style.scrollBehavior = 'auto'; slider.style.scrollSnapType = 'none'; });
+                slider.addEventListener('mouseleave', () => { isDown = false; slider.style.cursor = 'grab'; slider.style.scrollBehavior = 'smooth'; slider.style.scrollSnapType = 'x mandatory'; });
+                slider.addEventListener('mouseup', () => { isDown = false; slider.style.cursor = 'grab'; slider.style.scrollBehavior = 'smooth'; slider.style.scrollSnapType = 'x mandatory'; });
+                slider.addEventListener('mousemove', (e) => { if (!isDown) return; e.preventDefault(); const x = e.pageX - slider.offsetLeft; const walk = (x - startX) * 1.5; slider.scrollLeft = scrollLeft - walk; });
+            });
+        }
+        document.addEventListener('DOMContentLoaded', initDragToScroll);
+
+        let vibrateEnabled = localStorage.getItem('gd_vibrate') !== 'false';
+        let soundEnabled = localStorage.getItem('gd_sound') !== 'false';
+        let musicEnabled = localStorage.getItem('gd_music') !== 'false';
+        let particlesEnabled = localStorage.getItem('gd_particles') !== 'false';
+        let bubblesEnabled = localStorage.getItem('gd_bubbles') !== 'false';
+        let powerSaverEnabled = localStorage.getItem('gd_powersaver') === 'true';
+        let lightThemeEnabled = localStorage.getItem('gd_theme') === 'light';
+
+        function triggerHaptic(type = 'normal') { if (vibrateEnabled && navigator.vibrate) { if (type === 'death') { navigator.vibrate([300, 100, 300]); } else if (type === 'win') { navigator.vibrate([100, 50, 100, 50, 200]); } else if (type === 'hit') { navigator.vibrate(80); } else { navigator.vibrate(30); } } }
+
+        let audioCtx = null; let bgmInterval = null; let noteIndex = 0; const melody = [220, 261.63, 329.63, 261.63, 220, 196, 220, 0];
+        function initAudio() { if (audioCtx) return; audioCtx = new (window.AudioContext || window.webkitAudioContext)(); manageBGM(); }
+        document.addEventListener('touchstart', initAudio, {once:true}); document.addEventListener('mousedown', initAudio, {once:true});
+
+        function manageBGM() {
+            if (!audioCtx) return;
+            if (musicEnabled) {
+                if (!bgmInterval) {
+                    bgmInterval = setInterval(() => {
+                        if(isPaused || document.getElementById('screen-howtoplay').classList.contains('active')) return; 
+                        let freq = melody[noteIndex];
+                        if (freq > 0) { const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); osc.type = 'triangle'; osc.frequency.value = freq; let isIngame = document.getElementById('screen-game').classList.contains('active'); let vol = isIngame ? 0.05 : 0.02; gain.gain.setValueAtTime(vol, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.25); osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 0.25); }
+                        noteIndex = (noteIndex + 1) % melody.length;
+                    }, 300);
+                }
+            } else { if (bgmInterval) { clearInterval(bgmInterval); bgmInterval = null; } }
+        }
+
+        function playSFX(type) {
+            if (!soundEnabled || !audioCtx) return;
+            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); osc.connect(gain); gain.connect(audioCtx.destination); const now = audioCtx.currentTime;
+            if (type === 'coin') { osc.type = 'sine'; osc.frequency.setValueAtTime(1000, now); osc.frequency.exponentialRampToValueAtTime(1500, now + 0.1); gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1); osc.start(now); osc.stop(now + 0.1); } 
+            else if (type === 'win') { osc.type = 'square'; osc.frequency.setValueAtTime(440, now); osc.frequency.setValueAtTime(554, now + 0.1); osc.frequency.setValueAtTime(659, now + 0.2); osc.frequency.setValueAtTime(880, now + 0.3); gain.gain.setValueAtTime(0.1, now); gain.gain.linearRampToValueAtTime(0, now + 0.5); osc.start(now); osc.stop(now + 0.5); } 
+            else if (type === 'lose') { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(300, now); osc.frequency.exponentialRampToValueAtTime(50, now + 0.8); gain.gain.setValueAtTime(0.15, now); gain.gain.linearRampToValueAtTime(0, now + 0.8); osc.start(now); osc.stop(now + 0.8); } 
+            else if (type === 'hit') { osc.type = 'square'; osc.frequency.setValueAtTime(150, now); osc.frequency.exponentialRampToValueAtTime(50, now + 0.1); gain.gain.setValueAtTime(0.1, now); gain.gain.linearRampToValueAtTime(0, now + 0.1); osc.start(now); osc.stop(now + 0.1); }
+        }
+
+        const canvas = document.getElementById('gameCanvas'); const ctx = canvas.getContext('2d');
+        const winMsg = document.getElementById('win-msg'); const loseMsg = document.getElementById('lose-msg');
+        const pauseMenu = document.getElementById('pause-menu'); const gameTitle = document.getElementById('game-title');
+        const canvasContainer = document.getElementById('canvas-container'); const hudGold = document.getElementById('hud-gold'); const hudLife = document.getElementById('hud-life');
+
+        let maxLives = 10; let lifeRegenInterval = 10 * 60 * 1000; 
+        let playerLives = maxLives; let savedLives = localStorage.getItem('gd_lives'); if (savedLives !== null && !isNaN(savedLives)) playerLives = parseInt(savedLives);
+        let nextLifeTime = localStorage.getItem('gd_next_life') ? parseInt(localStorage.getItem('gd_next_life')) : 0; let isOutOfLives = (playerLives <= 0);
+
+        let gold = localStorage.getItem('gd_gold') ? parseInt(localStorage.getItem('gd_gold')) : 0;
+        let maxLevelReached = localStorage.getItem('gd_max_level') ? parseInt(localStorage.getItem('gd_max_level')) : 1; let currentLevel = maxLevelReached;
+        let invFreeze = localStorage.getItem('gd_inv_freeze') ? parseInt(localStorage.getItem('gd_inv_freeze')) : 0; let invGhost = localStorage.getItem('gd_inv_ghost') ? parseInt(localStorage.getItem('gd_inv_ghost')) : 0; let invPickaxe = localStorage.getItem('gd_inv_pickaxe') ? parseInt(localStorage.getItem('gd_inv_pickaxe')) : 0;
+
+        if (lightThemeEnabled) document.body.classList.add('light-theme');
+
+        let levelStars = {}; try { let savedStars = localStorage.getItem('gd_stars'); if(savedStars) levelStars = JSON.parse(savedStars); } catch(e) {}
+        let mysteryCooldown = parseInt(localStorage.getItem('gd_mystery_cd') || '0'); const MYSTERY_TOTAL_TIME = 14400; 
+        let mazeMap = [], rows, cols, tileSize = 0; let player = { x: 1, y: 1, hasGhostPass: false }; let playerTrail = []; let playerPathHistory = []; 
+        let isTransitioning = false; let isPaused = false; let exitPos = { x: 1, y: 1 }; let hasShield = false; let isPickaxeActive = false; let monsters = []; let powerUps = []; let particles = []; let hasKey = false; let traps = []; let teleporters = []; let isHolding = false; let holdDirs = []; let playerMoveTimer = null; let pendingReward = 0;
+
+        const availableSkins = [ { id: 'ninja', icon: '🥷', name: 'Ninja', price: 0 }, { id: 'vampire', icon: '🧛', name: 'Vampir', price: 500 }, { id: 'werewolf', icon: '🐺', name: 'Kurtadam', price: 500 }, { id: 'wizard', icon: '🧙‍♂️', name: 'Büyücü', price: 500 }, { id: 'robot', icon: '🤖', name: 'Robot', price: 500 } ];
+        let ownedSkins = ['ninja']; try { let sSkins = localStorage.getItem('gd_owned_skins'); if(sSkins) ownedSkins = JSON.parse(sSkins); } catch(e) {} let currentSkin = localStorage.getItem('gd_current_skin') || 'ninja';
+
+        let claimedAchievements = []; try { let sAch = localStorage.getItem('gd_achievements'); if(sAch) claimedAchievements = JSON.parse(sAch); } catch(e) {}
+        let achievements = [ { id: 'first_blood', title: 'İlk Adım', desc: '10 bölüm bitir', reward: 20, check: () => maxLevelReached > 10 }, { id: 'rich_ninja', title: 'Altın Avcısı', desc: '100 altın topla', reward: 30, check: () => gold >= 100 }, { id: 'half_way', title: 'Dehliz Kaşifi', desc: '50. bölüme ulaş', reward: 100, check: () => maxLevelReached >= 50 }, { id: 'item_buyer', title: 'Alışveriş', desc: '1 eşya al', reward: 25, check: () => (invFreeze > 0 || invGhost > 0 || invPickaxe > 0) }, { id: 'survivor', title: 'Hayatta Kalan', desc: '20. bölüme ulaş', reward: 40, check: () => maxLevelReached >= 20 }, { id: 'master_spin', title: 'Şanslı Çark', desc: 'Çarkı çevir', reward: 15, check: () => localStorage.getItem('gd_last_spin') !== null }, { id: 'century', title: 'Efsane Ninja', desc: '100. bölüme', reward: 250, check: () => maxLevelReached >= 100 }, { id: 'millionaire', title: 'Servet', desc: '500 altın yap', reward: 150, check: () => gold >= 500 } ];
+        
+        let dailyQuests = [ { id: 'dq_pass', title: 'Antrenman', desc: '3 bölüm geç', goal: 3, progress: parseInt(localStorage.getItem('gd_dq_pass') || '0'), reward: 30, claimed: localStorage.getItem('gd_dq_pass_claimed') === 'true' }, { id: 'dq_shop', title: 'Pazar', desc: '1 eşya satın al', goal: 1, progress: parseInt(localStorage.getItem('gd_dq_shop') || '0'), reward: 20, claimed: localStorage.getItem('gd_dq_shop_claimed') === 'true' },{ id: 'dq_gold', title: 'Altın Avı', desc: '50 altın topla', goal: 50, progress: parseInt(localStorage.getItem('gd_dq_gold') || '0'), reward: 25, claimed: localStorage.getItem('gd_dq_gold_claimed') === 'true' },{ id: 'dq_spin', title: 'Şanslı Gün', desc: 'Çarkı çevir', goal: 1, progress: parseInt(localStorage.getItem('gd_dq_spin') || '0'), reward: 15, claimed: localStorage.getItem('gd_dq_spin_claimed') === 'true' },{ id: 'dq_use_item', title: 'Taktiksel', desc: '2 eşya kullan', goal: 2, progress: parseInt(localStorage.getItem('gd_dq_use_item') || '0'), reward: 35, claimed: localStorage.getItem('gd_dq_use_item_claimed') === 'true' } ];
+        let weeklyQuests = [ { id: 'wq_pass', title: 'Maraton', desc: '25 bölüm geç', goal: 25, progress: parseInt(localStorage.getItem('gd_wq_pass') || '0'), reward: 150, claimed: localStorage.getItem('gd_wq_pass_claimed') === 'true' }, { id: 'wq_gold', title: 'Büyük Hazine', desc: '300 altın topla', goal: 300, progress: parseInt(localStorage.getItem('gd_wq_gold') || '0'), reward: 100, claimed: localStorage.getItem('gd_wq_gold_claimed') === 'true' },{ id: 'wq_shop', title: 'Tüccar', desc: '5 eşya satın al', goal: 5, progress: parseInt(localStorage.getItem('gd_wq_shop') || '0'), reward: 80, claimed: localStorage.getItem('gd_wq_shop_claimed') === 'true' },{ id: 'wq_spin', title: 'Kumarbaz', desc: 'Çarkı 5 kez çevir', goal: 5, progress: parseInt(localStorage.getItem('gd_wq_spin') || '0'), reward: 50, claimed: localStorage.getItem('gd_wq_spin_claimed') === 'true' },{ id: 'wq_box', title: 'Sandık Kurdu', desc: '3 sandık aç', goal: 3, progress: parseInt(localStorage.getItem('gd_wq_box') || '0'), reward: 120, claimed: localStorage.getItem('gd_wq_box_claimed') === 'true' } ];
+
+        let todayStrCheck = new Date().toDateString(); let lastDayCheck = localStorage.getItem('gd_day_check');
+        if (lastDayCheck !== todayStrCheck) { dailyQuests.forEach(dq => { dq.progress = 0; dq.claimed = false; localStorage.setItem('gd_' + dq.id, '0'); localStorage.setItem('gd_' + dq.id + '_claimed', 'false'); }); localStorage.setItem('gd_day_check', todayStrCheck); }
+        let lastWeekCheck = localStorage.getItem('gd_week_check'); let currentWeekNum = Math.floor(new Date().getTime() / (7 * 24 * 60 * 60 * 1000)); if (lastWeekCheck !== currentWeekNum.toString()) { weeklyQuests.forEach(wq => { wq.progress = 0; wq.claimed = false; localStorage.setItem('gd_' + wq.id, '0'); localStorage.setItem('gd_' + wq.id + '_claimed', 'false'); }); localStorage.setItem('gd_week_check', currentWeekNum.toString()); }
+
+        const themes = [ { name: "Siber Uzay", outBg: '#0a0f1c', canvasBg: '#121b2e', wallLight: '#3a5a8c', wallDark: '#0a1222', wallBase: '#1e3359', path: '#1a263b', portal: '#4cd137', trail: '0, 247, 255', monster: '#ff4757', title: '#00f7ff' }, { name: "Taş Zindan", outBg: '#0b0c10', canvasBg: '#1e2227', wallLight: '#78818a', wallDark: '#1d2126', wallBase: '#4a525a', path: '#2a3038', portal: '#66fcf1', trail: '102, 252, 241', monster: '#ff4757', title: '#66fcf1' }, { name: "Cehennem Lavı", outBg: '#170505', canvasBg: '#2b0a0a', wallLight: '#e67e22', wallDark: '#3a0c0c', wallBase: '#9c3806', path: '#401212', portal: '#f1c40f', trail: '243, 156, 18', monster: '#e84393', title: '#e74c3c' }, { name: "Zehirli Bataklık", outBg: '#07120a', canvasBg: '#0f2414', wallLight: '#2ecc71', wallDark: '#08170c', wallBase: '#18522b', path: '#15301b', portal: '#9b59b6', trail: '46, 204, 113', monster: '#f39c12', title: '#2ecc71' }, { name: "Buzul Mağara", outBg: '#000a14', canvasBg: '#001528', wallLight: '#a0e6ff', wallDark: '#002b5e', wallBase: '#00509e', path: '#00204a', portal: '#ffffff', trail: '160, 230, 255', monster: '#ff0055', title: '#a0e6ff' }, { name: "Altın Tapınak", outBg: '#1a1300', canvasBg: '#2a2000', wallLight: '#ffd700', wallDark: '#4a3500', wallBase: '#8a6500', path: '#3a2a00', portal: '#e74c3c', trail: '255, 215, 0', monster: '#8e44ad', title: '#ffd700' }, { name: "Hayalet Kasaba", outBg: '#100b14', canvasBg: '#1c1524', wallLight: '#8a7b9c', wallDark: '#2a2035', wallBase: '#4a3b5c', path: '#251c30', portal: '#2ecc71', trail: '138, 123, 156', monster: '#f1c40f', title: '#8a7b9c' }, { name: "Kristal Madeni", outBg: '#140514', canvasBg: '#280a28', wallLight: '#ff77ff', wallDark: '#4a004a', wallBase: '#9e009e', path: '#3a0f3a', portal: '#00ffff', trail: '255, 119, 255', monster: '#ffff00', title: '#ff77ff' }, { name: "Çöl Serabı", outBg: '#1a1005', canvasBg: '#2a1a0a', wallLight: '#e6b07e', wallDark: '#4a2b0f', wallBase: '#9c6535', path: '#3a2515', portal: '#3498db', trail: '230, 176, 126', monster: '#c0392b', title: '#e6b07e' }, { name: "Derin Uzay", outBg: '#000000', canvasBg: '#05050a', wallLight: '#ffffff', wallDark: '#222233', wallBase: '#555566', path: '#11111a', portal: '#ff00ff', trail: '255, 255, 255', monster: '#00ff00', title: '#ffffff' } ];
+        const themeIcons = ["🌌", "🧱", "🌋", "🤢", "❄️", "🏛️", "👻", "💎", "🏜️", "🚀"];
+
+        function showScreen(id) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); updateHUD(); manageBGM(); if (id === 'screen-catalog') buildCatalog(); if (id === 'screen-achievements') buildAchievements(); if (id === 'screen-quests') buildQuests(); if (id === 'screen-settings') loadSettings(); if (id === 'screen-shop') updateShopUI(); if (id === 'screen-menu') updateCarousel(); }
+        function updateHUD() { hudGold.innerText = gold; document.getElementById('inv-freeze-c').innerText = invFreeze; document.getElementById('inv-ghost-c').innerText = invGhost; document.getElementById('inv-pickaxe-c').innerText = invPickaxe; localStorage.setItem('gd_gold', gold); localStorage.setItem('gd_inv_freeze', invFreeze); localStorage.setItem('gd_inv_ghost', invGhost); localStorage.setItem('gd_inv_pickaxe', invPickaxe); }
+        function resetGameData() { if (confirm("Tüm oyun ilerlemen sıfırlanacak! Emin misin?")) { localStorage.clear(); location.reload(); } }
+        function updateQuestProgress(id, amount) { let current = parseInt(localStorage.getItem('gd_' + id) || '0'); localStorage.setItem('gd_' + id, current + amount); let qd = dailyQuests.find(q => q.id === id); if (qd) qd.progress = current + amount; let qw = weeklyQuests.find(q => q.id === id); if (qw) qw.progress = current + amount; }
+
+        function updateShopUI() {
+            const containerItems = document.getElementById('shop-items-slider'); const containerSkins = document.getElementById('shop-skins-slider');
+            if(!containerItems || !containerSkins) return;
+            containerItems.innerHTML = `<div class="h-card highlight" onclick="watchAdForGold()"><div class="h-icon-wrapper" style="background:rgba(46,204,113,0.3); border-color:#2ecc71;"><div class="h-icon">📺</div></div><div class="h-title">Bedava Altın</div><div class="h-desc">Reklam izle</div><button class="h-btn" style="background:#2ecc71; color:white;">+25 💰</button></div>
+            <div class="h-card" onclick="buyItem('life', 50)"><div class="h-icon-wrapper"><div class="h-icon">♥</div></div><div class="h-title">Ekstra Can</div><div class="h-desc">Canını fulle</div><button class="h-btn" style="background:#ffd700; color:black;">50 💰</button></div>
+            <div class="h-card" onclick="buyItem('freeze', 100)"><div class="h-icon-wrapper"><div class="h-icon">❄️</div></div><div class="h-title">Dondurucu</div><div class="h-desc">Durdur</div><button class="h-btn" style="background:#ffd700; color:black;">100 💰</button></div>
+            <div class="h-card" onclick="buyItem('ghost', 150)"><div class="h-icon-wrapper"><div class="h-icon">👻</div></div><div class="h-title">Hayalet</div><div class="h-desc">İçinden geç</div><button class="h-btn" style="background:#ffd700; color:black;">150 💰</button></div>
+            <div class="h-card" onclick="buyItem('pickaxe', 200)"><div class="h-icon-wrapper"><div class="h-icon">⛏️</div></div><div class="h-title">Kırıcı</div><div class="h-desc">Duvarı yık</div><button class="h-btn" style="background:#ffd700; color:black;">200 💰</button></div>`;
+            containerSkins.innerHTML = '';
+            availableSkins.forEach(skin => {
+                let isOwned = ownedSkins.includes(skin.id); let isSelected = (currentSkin === skin.id); let btnClass = isSelected ? 'btn-selected' : (isOwned ? 'btn-select' : 'btn-buy'); let btnText = isSelected ? 'SEÇİLDİ' : (isOwned ? 'SEÇ' : `${skin.price} 💰`); let btnStyle = isSelected ? 'background:#27ae60; color:white; box-shadow:none;' : (isOwned ? 'background:#2980b9; color:white;' : 'background:#ffd700; color:black;');
+                let card = document.createElement('div'); card.className = 'h-card'; card.innerHTML = `<div class="h-icon-wrapper"><div class="h-icon">${skin.icon}</div></div><div class="h-title">${skin.name}</div><div class="h-desc">Kostüm</div><button class="h-btn" style="${btnStyle}" onclick="buyOrSelectSkin('${skin.id}', ${skin.price})">${btnText}</button>`; containerSkins.appendChild(card);
+            });
+        }
+
+        function buildAchievements() { 
+            const container = document.getElementById('achievements-slider'); if(!container) return; container.innerHTML = ''; 
+            achievements.forEach(ach => { 
+                let isDone = ach.check(), isClaimed = claimedAchievements.includes(ach.id); let btnHtml = isClaimed ? `<button class="h-btn" style="background:#4cd137; color:white; box-shadow:none;">✔ ALINDI</button>` : (isDone ? `<button class="h-btn" style="background:#ffd700; color:black;" onclick="claimAchievement('${ach.id}', ${ach.reward})">AL (+${ach.reward})</button>` : `<button class="h-btn" style="background:#333; color:#777; box-shadow:none;">KİLİTLİ</button>`);
+                let div = document.createElement('div'); div.className = 'h-card'; div.innerHTML = `<div class="h-icon-wrapper"><div class="h-icon">🏆</div></div><div class="h-title">${ach.title}</div><div class="h-desc">${ach.desc}</div>${btnHtml}`; container.appendChild(div); 
+            }); 
+        }
+
+        function buildQuests() { 
+            const containerDaily = document.getElementById('quests-daily-slider'); const containerWeekly = document.getElementById('quests-weekly-slider');
+            if(!containerDaily || !containerWeekly) return; 
+            containerDaily.innerHTML = ''; containerWeekly.innerHTML = ''; 
+            dailyQuests.forEach(q => { 
+                let isDone = q.progress >= q.goal; let btnHtml = q.claimed ? `<button class="h-btn" style="background:#4cd137; color:white; box-shadow:none;">✔ ALINDI</button>` : (isDone ? `<button class="h-btn" style="background:#ffd700; color:black;" onclick="claimQuest('${q.id}', ${q.reward})">AL (+${q.reward})</button>` : `<button class="h-btn" style="background:#333; color:#777; box-shadow:none;">${q.progress}/${q.goal}</button>`);
+                let div = document.createElement('div'); div.className = 'h-card'; div.innerHTML = `<div class="h-icon-wrapper" style="background:rgba(46,204,113,0.3); border-color:#2ecc71;"><div class="h-icon">🎯</div></div><div class="h-title">${q.title}</div><div class="h-desc" style="color:#66fcf1;">Günlük</div><div class="h-desc" style="margin-bottom:2px;">${q.desc}</div>${btnHtml}`; containerDaily.appendChild(div); 
+            }); 
+            weeklyQuests.forEach(q => { 
+                let isDone = q.progress >= q.goal; let btnHtml = q.claimed ? `<button class="h-btn" style="background:#4cd137; color:white; box-shadow:none;">✔ ALINDI</button>` : (isDone ? `<button class="h-btn" style="background:#ffd700; color:black;" onclick="claimQuest('${q.id}', ${q.reward})">AL (+${q.reward})</button>` : `<button class="h-btn" style="background:#333; color:#777; box-shadow:none;">${q.progress}/${q.goal}</button>`);
+                let div = document.createElement('div'); div.className = 'h-card'; div.innerHTML = `<div class="h-icon-wrapper" style="background:rgba(230,126,34,0.3); border-color:#e67e22;"><div class="h-icon">🔥</div></div><div class="h-title">${q.title}</div><div class="h-desc" style="color:#66fcf1;">Haftalık</div><div class="h-desc" style="margin-bottom:2px;">${q.desc}</div>${btnHtml}`; containerWeekly.appendChild(div); 
+            }); 
+        }
+
+        function buildCatalog() { 
+            const container = document.getElementById('catalog-container'); if(!container) return; container.innerHTML = ''; 
+            for(let i=0; i<50; i++) { 
+                let startLevel = i * 10 + 1, isUnlocked = maxLevelReached >= startLevel; let themeObj = themes[i % themes.length]; let icon = themeIcons[i % themeIcons.length]; let cycle = Math.floor(i / 10) + 1; let themeDisplayName = themeObj.name + (cycle > 1 ? " +" + (cycle-1) : "");
+                let div = document.createElement('div'); div.className = "h-card " + (isUnlocked ? 'unlocked' : 'locked'); let lockHtml = isUnlocked ? '' : '<div class="lock-overlay">🔒</div>'; let btnHtml = isUnlocked ? `<button class="h-btn" style="background:#2ecc71; color:white;">OYNA ▶</button>` : `<button class="h-btn" style="background:#333; color:#777; box-shadow:none;">KİLİTLİ</button>`;
+                div.innerHTML = `${lockHtml}<div class='h-icon-wrapper'><div class='h-icon'>${icon}</div></div><div class='h-title'>${themeDisplayName}</div><div class='h-desc'>Bölüm ${startLevel}-${startLevel+9}</div>${btnHtml}`; if(isUnlocked) { div.onclick = () => { triggerHaptic(); openUniverse(i, startLevel, themeDisplayName); }; } container.appendChild(div); 
+            } 
+        }
+
+        function loadSettings() {
+            const containerAudio = document.getElementById('settings-audio-slider'); const containerVisual = document.getElementById('settings-visual-slider');
+            if(!containerAudio || !containerVisual) return; 
+            containerAudio.innerHTML = ''; containerVisual.innerHTML = '';
+            
+            const audioData = [ { id: 'music', icon: '🎵', title: 'Müzik', desc: 'Arkaplan', state: musicEnabled }, { id: 'sound', icon: '🔊', title: 'Ses', desc: 'Efektler', state: soundEnabled }, { id: 'vibrate', icon: '📳', title: 'Titreşim', desc: 'Haptik', state: vibrateEnabled } ];
+            const visualData = [ { id: 'particles', icon: '✨', title: 'Partiküller', desc: 'Görsel', state: particlesEnabled }, { id: 'bubbles', icon: '💬', title: 'Konuşmalar', desc: 'Canavarlar', state: bubblesEnabled }, { id: 'powersaver', icon: '🔋', title: 'Güç Tasarruf', desc: 'Gölgeyi kapat', state: powerSaverEnabled }, { id: 'theme', icon: '☀️', title: 'Tema', desc: 'Açık Mod', state: lightThemeEnabled } ];
+            
+            audioData.forEach(set => {
+                let btnStyle = set.state ? 'background:#2ecc71; color:white;' : 'background:#e74c3c; color:white;'; let btnText = set.state ? 'AÇIK' : 'KAPALI';
+                let div = document.createElement('div'); div.className = 'h-card'; div.innerHTML = `<div class="h-icon-wrapper" style="background:rgba(52,152,219,0.3); border-color:#3498db;"><div class="h-icon">${set.icon}</div></div><div class="h-title">${set.title}</div><div class="h-desc">${set.desc}</div><button class="h-btn" style="${btnStyle}" onclick="toggleSettingValue('${set.id}')">${btnText}</button>`; containerAudio.appendChild(div);
+            });
+            
+            visualData.forEach(set => {
+                let btnStyle = set.state ? 'background:#2ecc71; color:white;' : 'background:#e74c3c; color:white;'; let btnText = set.state ? 'AÇIK' : 'KAPALI';
+                let div = document.createElement('div'); div.className = 'h-card'; div.innerHTML = `<div class="h-icon-wrapper" style="background:rgba(155,89,182,0.3); border-color:#9b59b6;"><div class="h-icon">${set.icon}</div></div><div class="h-title">${set.title}</div><div class="h-desc">${set.desc}</div><button class="h-btn" style="${btnStyle}" onclick="toggleSettingValue('${set.id}')">${btnText}</button>`; containerVisual.appendChild(div);
+            });
+        }
+
+        function toggleSettingValue(id) { triggerHaptic(); if(id === 'music') musicEnabled = !musicEnabled; if(id === 'sound') soundEnabled = !soundEnabled; if(id === 'vibrate') vibrateEnabled = !vibrateEnabled; if(id === 'particles') particlesEnabled = !particlesEnabled; if(id === 'bubbles') bubblesEnabled = !bubblesEnabled; if(id === 'powersaver') powerSaverEnabled = !powerSaverEnabled; if(id === 'theme') { lightThemeEnabled = !lightThemeEnabled; if(lightThemeEnabled) document.body.classList.add('light-theme'); else document.body.classList.remove('light-theme'); applyTheme(); } localStorage.setItem('gd_music', musicEnabled); localStorage.setItem('gd_sound', soundEnabled); localStorage.setItem('gd_vibrate', vibrateEnabled); localStorage.setItem('gd_particles', particlesEnabled); localStorage.setItem('gd_bubbles', bubblesEnabled); localStorage.setItem('gd_powersaver', powerSaverEnabled); localStorage.setItem('gd_theme', lightThemeEnabled ? 'light' : 'dark'); manageBGM(); loadSettings(); }
+
+        let currentCardIndex = 0; let cards = []; const totalCards = 8; 
+        function updateCarousel() { const track = document.getElementById('carouselTrack'), wrapper = document.getElementById('carouselWrapper'); if(!wrapper || !track) return; cards = document.querySelectorAll('.menu-card'); track.style.display = 'block'; track.style.transform = 'none'; track.style.width = '100%'; cards.forEach((card, index) => { card.classList.remove('active-card', 'prev-card', 'next-card'); let offset = index - currentCardIndex; if (offset < -3) offset += totalCards; if (offset > 4) offset -= totalCards; if (offset === 0) card.classList.add('active-card'); else if (offset === -1) card.classList.add('prev-card'); else if (offset === 1) card.classList.add('next-card'); let xPos = offset * 224; let scale = offset === 0 ? 1 : 0.85; let opacity = offset === 0 ? 1 : (Math.abs(offset) <= 2 ? 0.4 : 0); card.style.position = 'absolute'; card.style.left = '50%'; card.style.marginLeft = '-100px'; card.style.transform = `translateX(${xPos}px) scale(${scale})`; card.style.opacity = opacity; card.style.zIndex = 10 - Math.abs(offset); card.style.transition = 'all 0.4s cubic-bezier(0.25, 1, 0.5, 1)'; card.style.pointerEvents = Math.abs(offset) <= 1 ? 'auto' : 'none'; }); }
+        window.addEventListener('resize', updateCarousel); 
+        document.addEventListener('DOMContentLoaded', () => { cards = document.querySelectorAll('.menu-card'); cards.forEach((card) => { card.addEventListener('click', (e) => { if(e.target.tagName.toLowerCase() === 'button') return; if (card.classList.contains('prev-card')) slideCard(-1); else if (card.classList.contains('next-card')) slideCard(1); }); }); setTimeout(updateCarousel, 50); });
+        function slideCard(direction) { triggerHaptic(); currentCardIndex += direction; if (currentCardIndex < 0) currentCardIndex = totalCards - 1; else if (currentCardIndex >= totalCards) currentCardIndex = 0; updateCarousel(); }
+        let cStartX = 0; const cWrapper = document.getElementById('carouselWrapper'); if(cWrapper) { cWrapper.addEventListener('touchstart', e => { cStartX = e.changedTouches[0].clientX; }, {passive: true}); cWrapper.addEventListener('touchend', e => { let diff = cStartX - e.changedTouches[0].clientX; if (diff > 40) slideCard(1); else if (diff < -40) slideCard(-1); }, {passive: true}); }
+
+        function updateMysteryBoxTimer() { let timerEl = document.getElementById('card-box-timer'); if (!timerEl) return; if (mysteryCooldown > 0) { mysteryCooldown--; localStorage.setItem('gd_mystery_cd', mysteryCooldown); let h = Math.floor(mysteryCooldown / 3600); let m = Math.floor((mysteryCooldown % 3600) / 60); let s = mysteryCooldown % 60; timerEl.innerText = "Kalan: " + h + "s " + m + "d " + s + "s"; } else { timerEl.innerText = "Açmaya Hazır! 🎉"; } }
+        setInterval(updateMysteryBoxTimer, 1000);
+        
+        /* REKLAM ALTYAPISI (ADMOB / ADSENSE İÇİN HAZIRLIK) */
+        function showInterstitialAd() {
+            // TODO: Gerçek AdMob/Adsense Geçiş Reklamı (Interstitial) API çağrısı buraya gelecek.
+            console.log("Geçiş Reklamı Gösteriliyor...");
+            alert("--- GEÇİŞ REKLAMI ---\n(Sponsorlu reklam izleniyor...)");
+        }
+        
+        function showRewardedAd(onRewardGranted) {
+            // TODO: Gerçek AdMob/Adsense Ödüllü (Rewarded) Reklam API çağrısı buraya gelecek.
+            // Reklam izlenip kapatıldığında 'onRewardGranted()' fonksiyonu tetiklenir.
+            console.log("Ödüllü Reklam Gösteriliyor...");
+            alert("--- ÖDÜLLÜ REKLAM İZLENİYOR ---\n(Reklam bitti ve ödül kazanıldı)");
+            onRewardGranted(); // Simülasyon: Anında ödülü ver
+        }
+
+        function openMysteryBox() { if (mysteryCooldown > 0) { alert("Sandık hazır değil!"); return; } triggerHaptic(); let overlay = document.getElementById('mystery-overlay'); let boxIcon = document.getElementById('box-icon'); let rewardText = document.getElementById('mystery-reward-text'); let closeBtn = document.getElementById('mystery-close-btn'); boxIcon.className = "anim-shaking"; boxIcon.innerText = "🎁"; rewardText.innerText = "Sihri çözülüyor..."; closeBtn.style.display = "none"; overlay.classList.add('show-msg'); setTimeout(() => { boxIcon.className = ""; boxIcon.innerText = "🌟"; let rewards = [ { type: 'gold', val: 50, text: '50 Altın 💰' }, { type: 'freeze', val: 2, text: '2 Dondurucu ❄️' }, { type: 'pickaxe', val: 1, text: '1 Duvar Kırıcı ⛏️' } ]; let reward = rewards[Math.floor(Math.random() * rewards.length)]; if (reward.type === 'gold') { gold += reward.val; updateQuestProgress('dq_gold', reward.val); updateQuestProgress('wq_gold', reward.val); playSFX('coin'); } else if (reward.type === 'freeze') { invFreeze += reward.val; playSFX('win'); } else if (reward.type === 'pickaxe') { invPickaxe += reward.val; playSFX('win'); } updateQuestProgress('dq_box', 1); updateQuestProgress('wq_box', 1); updateHUD(); mysteryCooldown = MYSTERY_TOTAL_TIME; localStorage.setItem('gd_mystery_cd', mysteryCooldown); rewardText.innerHTML = '<span class="anim-reward" style="display:block; color:#ffd700; font-size:22px; font-weight:bold;">TEBRİKLER!<br>' + reward.text + '</span>'; closeBtn.style.display = "block"; }, 1800); }
+        function closeMysteryOverlay() { triggerHaptic(); document.getElementById('mystery-overlay').classList.remove('show-msg'); }
+        
+        function watchAdForGold() { 
+            triggerHaptic(); 
+            showRewardedAd(() => {
+                alert("25 Altın Cüzdana Eklendi!"); 
+                gold += 25; 
+                updateQuestProgress('dq_gold', 25); 
+                updateQuestProgress('wq_gold', 25); 
+                updateHUD(); 
+                playSFX('coin'); 
+                updateShopUI(); 
+            });
+        }
+        
+        function simulateIAP(packName, goldAmount, priceStr) { triggerHaptic(); if(confirm(packName + " paketini satın almak istiyor musun?")) { gold += goldAmount; updateQuestProgress('dq_gold', goldAmount); updateQuestProgress('wq_gold', goldAmount); updateHUD(); playSFX('win'); winMsg.innerHTML = `<span style='color:#ffd700; font-size:20px;'>SATIN ALIM BAŞARILI!</span><br><small style="color:#fff;">+${goldAmount} Altın.</small>`; winMsg.classList.add('show-msg'); setTimeout(() => { winMsg.classList.remove('show-msg'); showScreen('screen-menu'); }, 2000); } }
+        function claimDailyReward() { triggerHaptic(); let streak = parseInt(localStorage.getItem('gd_streak')) || 0; if(streak >= 7) streak = 0; let rGold = dailyRewards[streak]; gold += rGold; updateQuestProgress('dq_gold', rGold); updateQuestProgress('wq_gold', rGold); updateHUD(); localStorage.setItem('gd_last_claim', new Date().toDateString()); localStorage.setItem('gd_streak', streak + 1); showScreen('screen-bonus'); playSFX('coin'); }
+        function spinWheelAction() { let lastSpin = localStorage.getItem('gd_last_spin'); let today = new Date().toDateString(); if (lastSpin === today) { alert("Şans hakkını kullandın! Yarın gel."); return; } triggerHaptic(); let btn = document.getElementById('spin-btn'); let resultText = document.getElementById('spin-result'); let r1 = document.getElementById('reel1'); let r2 = document.getElementById('reel2'); let r3 = document.getElementById('reel3'); btn.disabled = true; resultText.innerText = "Çark dönüyor..."; let symbols = ['🍒', '💎', '7️⃣', '💰', '⭐', '🎁']; let interval = setInterval(() => { r1.innerText = symbols[Math.floor(Math.random() * symbols.length)]; r2.innerText = symbols[Math.floor(Math.random() * symbols.length)]; r3.innerText = symbols[Math.floor(Math.random() * symbols.length)]; }, 80); setTimeout(() => { clearInterval(interval); let finalSymbols = ['💰', '⭐', '🎁', '💎']; let wonSymbol = finalSymbols[Math.floor(Math.random() * finalSymbols.length)]; r1.innerText = wonSymbol; r2.innerText = wonSymbol; r3.innerText = wonSymbol; let wonGold = wonSymbol === '💎' ? 100 : (wonSymbol === '7️⃣' ? 70 : 30); resultText.innerText = "🎉 Tebrikler! +" + wonGold + " Altın!"; gold += wonGold; updateQuestProgress('dq_gold', wonGold); updateQuestProgress('wq_gold', wonGold); updateQuestProgress('dq_spin', 1); updateQuestProgress('wq_spin', 1); updateHUD(); localStorage.setItem('gd_last_spin', today); btn.style.opacity = 0.5; playSFX('win'); }, 2500); }
+        function buyItem(type, cost) { if (gold >= cost) { triggerHaptic(); if (type === 'life') { if (playerLives >= maxLives) { alert("Canın dolu!"); return; } playerLives++; localStorage.setItem('gd_lives', playerLives); } else if (type === 'freeze') { invFreeze++; } else if (type === 'ghost') { invGhost++; } else if (type === 'pickaxe') { invPickaxe++; } gold -= cost; updateQuestProgress('dq_shop', 1); updateQuestProgress('wq_shop', 1); updateHUD(); playSFX('coin'); updateShopUI(); } else { alert("Yeterli altın yok!"); } }
+        function buyOrSelectSkin(id, price) { triggerHaptic(); if (ownedSkins.includes(id)) { currentSkin = id; localStorage.setItem('gd_current_skin', currentSkin); } else { if (gold >= price) { gold -= price; ownedSkins.push(id); currentSkin = id; localStorage.setItem('gd_owned_skins', JSON.stringify(ownedSkins)); localStorage.setItem('gd_current_skin', currentSkin); updateHUD(); playSFX('coin'); } else { alert("Yeterli altın yok!"); return; } } updateShopUI(); }
+        function claimAchievement(id, reward) { triggerHaptic(); claimedAchievements.push(id); localStorage.setItem('gd_achievements', JSON.stringify(claimedAchievements)); gold += reward; updateHUD(); buildAchievements(); playSFX('coin'); }
+        function claimQuest(id, reward) { triggerHaptic(); let q = [...dailyQuests, ...weeklyQuests].find(x => x.id === id); if (q) { q.claimed = true; localStorage.setItem('gd_' + id + '_claimed', 'true'); gold += reward; updateHUD(); buildQuests(); playSFX('coin'); } }
+        function checkDailyReward() { let today = new Date().toDateString(); let lastClaim = localStorage.getItem('gd_last_claim'); if (lastClaim === today) { alert("Bugünün ödülünü zaten aldın!"); return; } let streak = parseInt(localStorage.getItem('gd_streak')) || 0; if (lastClaim) { let diffDays = Math.round(Math.abs(new Date(today) - new Date(lastClaim)) / (1000 * 60 * 60 * 24)); if (diffDays > 1) streak = 0; else if (streak >= 7) streak = 0; } const container = document.getElementById('daily-container'); container.innerHTML = ''; for (let i = 0; i < 7; i++) { let div = document.createElement('div'); div.className = 'daily-item' + (i === 6 ? ' day7' : ''); if (i < streak) div.classList.add('claimed'); else if (i === streak) div.classList.add('today'); div.innerHTML = "Gün " + (i+1) + "<br><strong style=\"font-size:14px;\">💰 " + dailyRewards[i] + "</strong>"; container.appendChild(div); } showScreen('screen-daily'); }
+        function togglePause() { if (isTransitioning || isOutOfLives) return; triggerHaptic(); isPaused = !isPaused; if (isPaused) pauseMenu.classList.add('show-msg'); else pauseMenu.classList.remove('show-msg'); }
+        function restartLevel() { if (playerLives <= 0) return; if (confirm("Bölüme baştan başlamak 1 CAN eksiltir. Emin misin?")) { triggerHaptic(); playerLives--; localStorage.setItem('gd_lives', playerLives); updateLifeTimer(); isPaused = false; pauseMenu.classList.remove('show-msg'); if (playerLives <= 0) { isOutOfLives = true; loseMsg.classList.add('show-msg'); playSFX('lose'); } else { initLevel(); } } }
+        function goToMenu() { triggerHaptic(); isPaused = false; isHolding = false; hideJoystick(); pauseMenu.classList.remove('show-msg'); loseMsg.classList.remove('show-msg'); monsters.forEach(m => clearTimeout(m.timeout)); showScreen('screen-menu'); }
+        function openUniverse(uIndex, startLevel, displayName) { let themeObj = themes[uIndex % themes.length]; document.getElementById('levels-title').innerText = displayName.toUpperCase(); document.getElementById('levels-title').style.color = themeObj.title; const container = document.getElementById('levels-container'); container.innerHTML = ''; for(let i=0; i<10; i++) { let level = startLevel + i; let isUnlocked = maxLevelReached >= level; let stars = levelStars[level] || 0; let starStr = '⭐'.repeat(stars) + '☆'.repeat(3 - stars); let btn = document.createElement('div'); btn.className = "level-btn " + (isUnlocked ? 'unlocked' : 'locked'); btn.innerHTML = level + "<div class=\"level-stars\">" + (isUnlocked ? starStr : '') + "</div>"; if(isUnlocked) { btn.onclick = () => { triggerHaptic(); startGame(level); }; } container.appendChild(btn); } showScreen('screen-levels'); }
+        function startGame(levelNumber) { if (playerLives <= 0) { alert("Canın yok! Marketten al veya bekle."); return; } currentLevel = levelNumber; showScreen('screen-game'); initLevel(); }
+        function continueGame() { triggerHaptic(); startGame(maxLevelReached); }
+        
+        function tacticalPause() { monsters.forEach(m => { let current = m.frozenUntil && m.frozenUntil > Date.now() ? m.frozenUntil : Date.now(); m.frozenUntil = current + 2000; }); }
+        function createParticles(x, y, color) { if(!particlesEnabled) return; for (let i = 0; i < 15; i++) { particles.push({ x: (x * tileSize) + tileSize / 2, y: (y * tileSize) + tileSize / 2, vx: (Math.random() - 0.5) * 8, vy: (Math.random() - 0.5) * 8, life: 1.0, color: color, size: Math.random() * 4 + 2 }); } }
+        function useFreeze() { if(isTransitioning || isOutOfLives || isPaused) return; if (invFreeze > 0) { triggerHaptic(); invFreeze--; updateQuestProgress('dq_use_item', 1); updateQuestProgress('wq_use_item', 1); updateHUD(); monsters.forEach(m => { m.frozenUntil = Date.now() + 3500; }); createParticles(player.x, player.y, '#00ffff'); } }
+        function useGhost() { if(isTransitioning || isOutOfLives || isPaused) return; if (invGhost > 0) { triggerHaptic(); invGhost--; updateQuestProgress('dq_use_item', 1); updateQuestProgress('wq_use_item', 1); updateHUD(); player.hasGhostPass = true; tacticalPause(); winMsg.innerHTML = "<span style='color:#ffffff; font-size:16px;'>Hayalet Modu! 👻</span>"; winMsg.classList.add('show-msg'); setTimeout(() => { winMsg.classList.remove('show-msg'); }, 1500); createParticles(player.x, player.y, '#ffffff'); } }
+        function usePickaxe() { if(isTransitioning || isOutOfLives || isPaused) return; if (invPickaxe > 0 && !isPickaxeActive) { triggerHaptic(); isPickaxeActive = true; updateQuestProgress('dq_use_item', 1); updateQuestProgress('wq_use_item', 1); tacticalPause(); winMsg.innerHTML = "<span style='color:#e67e22; font-size:16px;'>Duvar Kırıcı! ⛏️</span>"; winMsg.classList.add('show-msg'); setTimeout(() => { winMsg.classList.remove('show-msg'); }, 1500); } }
+
+        function getMazeSize(level) { let cappedLevel = level > 30 ? 30 : level; return 9 + Math.floor((cappedLevel - 1) / 5) * 2; }
+        function generateMazeAlgorithm(r, c) { 
+            if (currentLevel > 0 && currentLevel % 10 === 0) {
+                let map = Array(r).fill().map(() => Array(c).fill(0));
+                for (let i = 0; i < r; i++) { map[i][0] = 1; map[i][c-1] = 1; }
+                for (let i = 0; i < c; i++) { map[0][i] = 1; map[r-1][i] = 1; }
+                for(let i=2; i<r-2; i+=2) { for(let j=2; j<c-2; j+=2) { if(Math.random()>0.6) map[i][j] = 1; } }
+                exitPos = { x: Math.floor(c / 2), y: Math.floor(r / 2) };
+                map[exitPos.y][exitPos.x] = 2;
+                return map;
+            }
+            let map = Array(r).fill().map(() => Array(c).fill(1)); function carve(y, x) { map[y][x] = 0; let dirs = [ [0, -2], [0, 2], [-2, 0], [2, 0] ]; dirs.sort(() => Math.random() - 0.5); for (let i = 0; i < dirs.length; i++) { let ny = y + dirs[i][0], nx = x + dirs[i][1]; if (ny > 0 && ny < r - 1 && nx > 0 && nx < c - 1 && map[ny][nx] === 1) { map[y + dirs[i][0] / 2][x + dirs[i][1] / 2] = 0; carve(ny, nx); } } } carve(1, 1); for (let y = 1; y < r - 1; y++) { for (let x = 1; x < c - 1; x++) { if (map[y][x] === 0) { let walls = 0; if (map[y-1][x] === 1) walls++; if (map[y+1][x] === 1) walls++; if (map[y][x-1] === 1) walls++; if (map[y][x+1] === 1) walls++; if (walls >= 3) { let dirs = [[-1,0],[1,0],[0,-1],[0,1]].sort(() => Math.random() - 0.5); for (let d of dirs) { let ny = y + d[0], nx = x + d[1]; if (ny > 0 && ny < r - 1 && nx > 0 && nx < c - 1 && map[ny][nx] === 1) { map[ny][nx] = 0; break; } } } } } } let possibleExits = []; for (let y = Math.floor(r / 2); y < r - 1; y++) { for (let x = Math.floor(c / 2); x < c - 1; x++) { if (map[y][x] === 0) possibleExits.push({ x: x, y: y }); } } if (possibleExits.length > 0) { exitPos = possibleExits[Math.floor(Math.random() * possibleExits.length)]; } else { exitPos = { x: c - 2, y: r - 2 }; } map[exitPos.y][exitPos.x] = 2; return map; 
+        }
+        function getFullPath(sx, sy, ex, ey) { let queue = [{ x: sx, y: sy }]; let visited = Array(rows).fill().map(() => Array(cols).fill(false)); let parent = Array(rows).fill().map(() => Array(cols).fill(null)); visited[sy][sx] = true; let dirs = [[0, -1], [0, 1], [-1, 0], [1, 0]]; let found = false; while (queue.length > 0) { let curr = queue.shift(); if (curr.x === ex && curr.y === ey) { found = true; break; } for (let d of dirs) { let nx = curr.x + d[1], ny = curr.y + d[0]; if (nx >= 0 && nx < cols && ny >= 0 && ny < rows && mazeMap[ny][nx] !== 1 && !visited[ny][nx]) { visited[ny][nx] = true; parent[ny][nx] = { x: curr.x, y: curr.y }; queue.push({ x: nx, y: ny }); } } } if (!found) return []; let path = []; let curr = { x: ex, y: ey }; while (curr !== null) { path.push(curr); curr = parent[curr.y][curr.x]; if(curr && curr.x === sx && curr.y === sy) { path.push(curr); break; } } return path.reverse(); }
+        function getEmptySpot(avoidPath = false) { let spots = []; let shortestPath = avoidPath ? getFullPath(1, 1, exitPos.x, exitPos.y) : []; for (let r = 1; r < rows - 1; r++) { for (let c = 1; c < cols - 1; c++) { if (mazeMap[r][c] === 0 && !(c === 1 && r === 1) && !(c === exitPos.x && r === exitPos.y)) { let isOccupied = powerUps.some(p => p.x === c && p.y === r) || traps.some(t => t.x === c && t.y === r); let inPath = avoidPath && shortestPath.some(sp => sp.x === c && sp.y === r); if (!isOccupied && !inPath) spots.push({x: c, y: r}); } } } if (spots.length > 0) return spots[Math.floor(Math.random() * spots.length)]; return null; }
+        function spawnPowerUps() { powerUps = []; traps = []; teleporters = []; hasKey = false; if (currentLevel >= 3) { mazeMap[exitPos.y][exitPos.x] = 3; let spot = getEmptySpot(); if(spot) powerUps.push({ x: spot.x, y: spot.y, active: true, type: 'key' }); } if (currentLevel >= 5) { let numTraps = Math.min(2, Math.floor(currentLevel / 3)); for(let i=0; i<numTraps; i++) { let spot = getEmptySpot(true); if(spot) traps.push({ x: spot.x, y: spot.y, isUp: false }); } } if (currentLevel % 4 === 0) { let spot = getEmptySpot(); if(spot) powerUps.push({ x: spot.x, y: spot.y, active: true, type: 'pickaxe' }); } if(currentLevel === maxLevelReached && Math.random() < 0.4) { let spot = getEmptySpot(); if(spot) powerUps.push({ x: spot.x, y: spot.y, active: true, type: 'gold' }); } let numMonsters = currentLevel >= 20 ? 2 : (currentLevel >= 10 ? 1 : 0); if (numMonsters > 0 && Math.random() < 0.25) { let spot = getEmptySpot(); if(spot) powerUps.push({ x: spot.x, y: spot.y, active: true, type: 'freeze' }); } if (currentLevel >= 6 && Math.random() < 0.6) { let t1 = getEmptySpot(); let t2 = getEmptySpot(true); if(t1 && t2) teleporters.push({x1: t1.x, y1: t1.y, x2: t2.x, y2: t2.y}); } }
+        function spawnMonsters() { 
+            monsters = []; 
+            if (currentLevel > 0 && currentLevel % 10 === 0) {
+                monsters.push({ active: true, spawnX: cols - 2, spawnY: rows - 2, x: cols - 2, y: rows - 2, state: 'chase', dirX: 0, dirY: 0, timeout: null, frozenUntil: 0, bubbleText: "KAÇAMAZSIN!", bubbleUntil: Date.now() + 4000, isBoss: true });
+                return;
+            }
+            let numMonsters = currentLevel >= 20 ? 2 : (currentLevel >= 10 ? 1 : 0); if (numMonsters === 0) return; let validSpots = []; for (let r = 2; r < rows - 2; r++) { for (let c = 2; c < cols - 2; c++) { if (mazeMap[r][c] === 0) { let distToExit = Math.abs(c - exitPos.x) + Math.abs(r - exitPos.y); let distToStart = Math.abs(c - 1) + Math.abs(r - 1); if (distToExit > 3 && distToStart > 6) { let canH = (mazeMap[r][c-1] === 0 && mazeMap[r][c+1] === 0); let canV = (mazeMap[r-1][c] === 0 && mazeMap[r+1][c] === 0); if (canH || canV) validSpots.push({ x: c, y: r, canH: canH, canV: canV }); } } } } for (let i = 0; i < numMonsters; i++) { if (validSpots.length > 0) { let randIndex = Math.floor(Math.random() * validSpots.length); let spot = validSpots.splice(randIndex, 1)[0]; monsters.push({ active: true, spawnX: spot.x, spawnY: spot.y, x: spot.x, y: spot.y, state: 'hunt', dirX: spot.canH ? 1 : 0, dirY: spot.canV ? 1 : 0, timeout: null, frozenUntil: 0, bubbleText: "", bubbleUntil: 0, isBoss: false }); } } 
+        }
+        
+        function claimPendingReward() {
+            if (pendingReward > 0) {
+                gold += pendingReward;
+                updateQuestProgress('dq_gold', pendingReward);
+                updateQuestProgress('wq_gold', pendingReward);
+                updateHUD();
+                pendingReward = 0;
+            }
+            if (currentLevel >= maxLevelReached) { 
+                maxLevelReached = currentLevel + 1; 
+                localStorage.setItem('gd_max_level', maxLevelReached); 
+            }
+        }
+        function nextLevel() {
+            triggerHaptic();
+            claimPendingReward();
+            // Bölüm 10 ve sonrasında, her 2 bölümde bir (12, 14, 16...) geçiş reklamı göster
+            if (currentLevel >= 10 && currentLevel % 2 === 0) {
+                showInterstitialAd();
+            }
+            currentLevel++;
+            startGame(currentLevel);
+        }
+        function multiplyReward() {
+            triggerHaptic();
+            showRewardedAd(() => {
+                pendingReward = 50;
+                playSFX('coin');
+                nextLevel();
+            });
+        }
+        function goToMenuFromReward() {
+            triggerHaptic();
+            claimPendingReward();
+            showScreen('screen-menu');
+        }
+
+        function checkLineOfSight(mx, my, px, py) { if (player.hasGhostPass) return false; if (Math.abs(mx - px) + Math.abs(my - py) > 4) return false; if (my === py) { let minX = Math.min(mx, px), maxX = Math.max(mx, px); for (let x = minX + 1; x < maxX; x++) { if (mazeMap[my][x] === 1) return false; } return true; } if (mx === px) { let minY = Math.min(my, py), maxY = Math.max(my, py); for (let y = minY + 1; y < maxY; y++) { if (mazeMap[y][mx] === 1) return false; } return true; } return false; }
+        function getNextStepTowardsPlayer(mx, my, px, py) { let queue = [{ x: mx, y: my, path: [] }]; let visited = Array(rows).fill().map(() => Array(cols).fill(false)); visited[my][mx] = true; let dirs = [[0, -1], [0, 1], [-1, 0], [1, 0]]; while (queue.length > 0) { let curr = queue.shift(); if (curr.x === px && curr.y === py) return curr.path[0]; for (let d of dirs) { let nx = curr.x + d[1], ny = curr.y + d[0]; if (nx >= 0 && nx < cols && ny >= 0 && ny < rows && mazeMap[ny][nx] !== 1 && !visited[ny][nx]) { visited[ny][nx] = true; queue.push({ x: nx, y: ny, path: [...curr.path, { x: nx, y: ny }] }); } } } return null; }
+        function scheduleMonsterMove(m) { if (isTransitioning || !m.active || isOutOfLives) return; let speed = m.isBoss ? (currentLevel >= 40 ? 400 : (currentLevel >= 30 ? 500 : (currentLevel >= 20 ? 600 : 750))) : (m.state === 'chase' ? 950 : 1400); m.timeout = setTimeout(() => { if(!isPaused) updateSingleMonster(m); scheduleMonsterMove(m); }, speed); }
+        function updateSingleMonster(m) { if (isTransitioning || !m.active || isOutOfLives || (m.frozenUntil && Date.now() < m.frozenUntil)) return; if (player.x === m.x && player.y === m.y) { if (player.hasGhostPass) { player.hasGhostPass = false; m.frozenUntil = Date.now() + 1500; m.bubbleText = "?!"; m.bubbleUntil = Date.now() + 1500; return; } else { killPlayer(); return; } } if (m.state === 'patrol' || m.state === 'hunt') { if (checkLineOfSight(m.x, m.y, player.x, player.y)) { m.state = 'alert'; m.bubbleText = "Seni Gördüm!"; m.bubbleUntil = Date.now() + 2500; setTimeout(() => { if (m.active && m.state === 'alert' && !isTransitioning) m.state = 'chase'; }, 800); } else { m.state = 'hunt'; } } if (m.state === 'patrol') { let nx = m.x + m.dirX, ny = m.y + m.dirY; if (mazeMap[ny][nx] === 1 || mazeMap[ny][nx] === 2 || mazeMap[ny][nx] === 3) { m.dirX *= -1; m.dirY *= -1; } else { m.x = nx; m.y = ny; } } else if (m.state === 'hunt' || m.state === 'chase') { if(player.hasGhostPass) { m.state = 'patrol'; return; } let nextStep = getNextStepTowardsPlayer(m.x, m.y, player.x, player.y); if (nextStep) { m.x = nextStep.x; m.y = nextStep.y; } else { m.state = 'patrol'; } } if (player.x === m.x && player.y === m.y && !(m.frozenUntil && Date.now() < m.frozenUntil)) { if (player.hasGhostPass) { player.hasGhostPass = false; m.frozenUntil = Date.now() + 1500; } else { killPlayer(); } } }
+        function killPlayer() { if(isTransitioning || isOutOfLives) return; triggerHaptic('death'); isTransitioning = true; isPickaxeActive = false; hideJoystick(); monsters.forEach(m => clearTimeout(m.timeout)); playSFX('lose'); playerLives--; localStorage.setItem('gd_lives', playerLives); updateLifeTimer(); if (playerLives <= 0) { isOutOfLives = true; loseMsg.classList.add('show-msg'); } else { let prevText = loseMsg.innerHTML; loseMsg.innerHTML = "<span style='color:#ff4757; font-size:30px; margin-bottom:15px; text-shadow:0 2px 10px #000;'>YAKALANDIN!</span>"; loseMsg.classList.add('show-msg'); setTimeout(() => { loseMsg.classList.remove('show-msg'); loseMsg.innerHTML = prevText; player = { x: 1, y: 1, hasGhostPass: false }; playerTrail = []; playerPathHistory = [{x: 1, y: 1}]; hasShield = false; particles = []; monsters.forEach(m => { m.state = 'hunt'; m.x = m.spawnX; m.y = m.spawnY; m.frozenUntil = 0; m.bubbleText = ""; m.bubbleUntil = 0; }); spawnPowerUps(); isTransitioning = false; monsters.forEach(m => scheduleMonsterMove(m)); }, 1500); } }
+        function applyTheme() { let themeIndex = Math.floor((currentLevel - 1) / 10) % themes.length; let cTheme = themes[themeIndex]; if (!lightThemeEnabled) { document.body.style.backgroundColor = cTheme.outBg; canvasContainer.style.backgroundColor = cTheme.canvasBg; canvasContainer.style.borderColor = cTheme.wallDark; } gameTitle.style.color = cTheme.title; }
+        function initLevel() { isTransitioning = false; isPaused = false; particles = []; hasShield = false; player.hasGhostPass = false; isPickaxeActive = false; hideJoystick(); monsters.forEach(m => clearTimeout(m.timeout)); document.getElementById('level-text').innerText = "BÖLÜM " + currentLevel; applyTheme(); updateHUD(); let size = getMazeSize(currentLevel); rows = size; cols = size; mazeMap = generateMazeAlgorithm(rows, cols); const maxCanvasSize = Math.min(window.innerWidth * 0.95, window.innerHeight * 0.65); tileSize = Math.floor(maxCanvasSize / rows); canvas.width = cols * tileSize; canvas.height = rows * tileSize; player = { x: 1, y: 1, hasGhostPass: false }; playerTrail = []; playerPathHistory = [{x: 1, y: 1}]; spawnMonsters(); spawnPowerUps(); if(playerMoveTimer) clearInterval(playerMoveTimer); playerMoveTimer = setInterval(() => { if(!isPaused && !isTransitioning && !isOutOfLives && isHolding && holdDirs.length > 0) { let moved = movePlayer(holdDirs[0].x, holdDirs[0].y); if (!moved && holdDirs.length > 1) { movePlayer(holdDirs[1].x, holdDirs[1].y); } } }, 150); if (playerLives <= 0) { isOutOfLives = true; loseMsg.classList.add('show-msg'); } else { monsters.forEach(m => scheduleMonsterMove(m)); } }
+        function drawSpeechBubble(ctx, x, y, text, cTheme) { ctx.save(); ctx.font = "bold " + (tileSize * 0.45) + "px sans-serif"; let textWidth = ctx.measureText(text).width, padding = 10; let bw = textWidth + padding * 2, bh = (tileSize * 0.6) + padding * 2; let isTop = y < tileSize * 2; let bx = x - bw / 2, by = isTop ? y + tileSize * 0.8 : y - tileSize * 0.8 - bh; ctx.fillStyle = cTheme.outBg; ctx.beginPath(); ctx.rect(bx, by, bw, bh); ctx.fill(); ctx.beginPath(); if(isTop) { ctx.moveTo(x - 8, by); ctx.lineTo(x + 8, by); ctx.lineTo(x, by - 12); } else { ctx.moveTo(x - 8, by + bh); ctx.lineTo(x + 8, by + bh); ctx.lineTo(x, by + bh + 12); } ctx.fill(); ctx.fillStyle = "#ffffff"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(text, x, by + bh / 2); ctx.restore(); }
+        function drawMaze() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height); let themeIndex = Math.floor((currentLevel - 1) / 10) % themes.length; let cTheme = themes[themeIndex]; ctx.fillStyle = lightThemeEnabled ? '#24344d' : cTheme.canvasBg; ctx.fillRect(0, 0, canvas.width, canvas.height); let border = Math.max(1, Math.floor(tileSize * 0.15)); const doShadow = !powerSaverEnabled;
+            
+            for (let r = 0; r < rows; r++) { for (let c = 0; c < cols; c++) { let x = c * tileSize, y = r * tileSize; if (mazeMap[r][c] === 1) { ctx.fillStyle = cTheme.wallLight; ctx.fillRect(x, y, tileSize, tileSize); ctx.fillStyle = cTheme.wallDark; ctx.fillRect(x + border, y + border, tileSize - border, tileSize - border); ctx.fillStyle = cTheme.wallBase; ctx.fillRect(x + border, y + border, tileSize - border*2, tileSize - border*2); } else if (mazeMap[r][c] === 0) { ctx.fillStyle = cTheme.path; ctx.fillRect(x + Math.floor(tileSize/2) - 1, y + Math.floor(tileSize/2) - 1, 2, 2); } else if (mazeMap[r][c] === 2) { if(doShadow){ ctx.shadowBlur = 20; ctx.shadowColor = cTheme.portal; } ctx.font = (tileSize * 0.8) + "px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("🌀", x + (tileSize/2), y + (tileSize/2)); if(doShadow) ctx.shadowBlur = 0; } else if (mazeMap[r][c] === 3) { ctx.font = (tileSize * 0.7) + "px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("🚪", x + (tileSize/2), y + (tileSize/2)); } } }
+            
+            traps.forEach(t => { let isUp = (Date.now() % 2400) < 800; t.isUp = isUp; let tx = t.x * tileSize, ty = t.y * tileSize; if (isUp) { ctx.font = (tileSize * 0.7) + "px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("📌", tx + tileSize/2, ty + tileSize/2); } else { ctx.fillStyle = 'rgba(231, 76, 60, 0.2)'; ctx.beginPath(); ctx.arc(tx + tileSize/2, ty + tileSize/2, tileSize/4, 0, Math.PI*2); ctx.fill(); } });
+            
+            let pSize = tileSize / 3; powerUps.forEach(p => { if (p.active) { if (p.type === 'key') { if(doShadow){ ctx.shadowBlur = 10; ctx.shadowColor = '#f1c40f'; } ctx.font = (tileSize * 0.6) + "px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("🔑", (p.x * tileSize) + (tileSize/2), (p.y * tileSize) + (tileSize/2)); if(doShadow) ctx.shadowBlur = 0; } else if (p.type === 'pickaxe') { if(doShadow){ ctx.shadowBlur = 10; ctx.shadowColor = '#e67e22'; } ctx.font = (tileSize * 0.6) + "px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("⛏️", (p.x * tileSize) + (tileSize/2), (p.y * tileSize) + (tileSize/2)); if(doShadow) ctx.shadowBlur = 0; } else { let color = '#00ffff'; if(p.type === 'shield') color = '#ffd700'; else if(p.type === 'life') color = '#ff4757'; else if(p.type === 'gold') color = '#f1c40f'; let px = (p.x * tileSize) + (tileSize/2), py = (p.y * tileSize) + (tileSize/2); if(doShadow){ ctx.shadowBlur = 20; ctx.shadowColor = color; } ctx.fillStyle = color; ctx.beginPath(); ctx.arc(px, py, pSize, 0, Math.PI * 2); ctx.fill(); if(doShadow) ctx.shadowBlur = 0; ctx.fillStyle = "#ffffff"; if (p.type === 'life') { ctx.font = (tileSize * 0.4) + "px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("♥", px, py); } else { ctx.beginPath(); ctx.arc(px, py, pSize / 2, 0, Math.PI * 2); ctx.fill(); } } } });
+            
+            teleporters.forEach(t => { if(doShadow){ ctx.shadowBlur = 15; ctx.shadowColor = '#9b59b6'; } ctx.font = (tileSize * 0.7) + "px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("🔮", (t.x1 * tileSize) + (tileSize/2), (t.y1 * tileSize) + (tileSize/2)); ctx.fillText("🔮", (t.x2 * tileSize) + (tileSize/2), (t.y2 * tileSize) + (tileSize/2)); if(doShadow) ctx.shadowBlur = 0; });
+            
+            particles.forEach((p, index) => { p.x += p.vx; p.y += p.vy; p.life -= 0.03; if(p.life <= 0) { particles.splice(index, 1); } else { ctx.globalAlpha = p.life; ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill(); } }); ctx.globalAlpha = 1.0;
+            
+            for (let i = 0; i < playerTrail.length; i++) { let opacity = (i + 1) / playerTrail.length; ctx.fillStyle = "rgba(" + cTheme.trail + ", " + (opacity * 0.5) + ")"; ctx.beginPath(); ctx.arc((playerTrail[i].x * tileSize) + (tileSize/2), (playerTrail[i].y * tileSize) + (tileSize/2), tileSize/4, 0, Math.PI * 2); ctx.fill(); }
+            
+            monsters.forEach(m => { if(m.active) { let isFrozen = m.frozenUntil && Date.now() < m.frozenUntil; let mx = (m.x * tileSize) + (tileSize/2), my = (m.y * tileSize) + (tileSize/2); if(doShadow){ ctx.shadowBlur = m.isBoss ? 25 : 15; ctx.shadowColor = isFrozen ? '#00ffff' : (m.isBoss ? '#ff4757' : cTheme.monster); } ctx.font = (tileSize * (m.isBoss ? 1.4 : 0.8)) + "px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(isFrozen ? "🥶" : (m.isBoss ? "🐲" : "👹"), mx, my); if(doShadow) ctx.shadowBlur = 0; if (m.bubbleUntil > Date.now() && !isFrozen && bubblesEnabled) { drawSpeechBubble(ctx, mx, my, m.bubbleText, cTheme); } } });
+            
+            if(doShadow){ ctx.shadowBlur = 15; ctx.shadowColor = player.hasGhostPass ? '#ffffff' : (hasShield ? '#ffd700' : "rgba(" + cTheme.trail + ", 1)"); } ctx.font = (tileSize * 0.7) + "px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; let skinObj = availableSkins.find(s => s.id === currentSkin) || availableSkins[0]; ctx.globalAlpha = player.hasGhostPass ? 0.5 : 1.0; ctx.fillText(player.hasGhostPass ? "👻" : skinObj.icon, (player.x * tileSize) + (tileSize/2), (player.y * tileSize) + (tileSize/2)); if(doShadow) ctx.shadowBlur = 0; ctx.globalAlpha = 1.0;
+            
+            if (currentLevel > 100 && !powerSaverEnabled) { let px = (player.x * tileSize) + (tileSize/2), py = (player.y * tileSize) + (tileSize/2); let fogMultiplier = 4.5; if (currentLevel >= 120) fogMultiplier = 3.5; if (currentLevel >= 140) fogMultiplier = 2.5; let fogRadius = tileSize * fogMultiplier; if (fogRadius > 0 && !isNaN(px) && !isNaN(py)) { let gradient = ctx.createRadialGradient(px, py, fogRadius * 0.3, px, py, fogRadius); gradient.addColorStop(0, 'rgba(0,0,0,0)'); if (lightThemeEnabled) { gradient.addColorStop(1, 'rgba(230, 235, 240, 0.98)'); } else { gradient.addColorStop(1, 'rgba(10, 15, 28, 0.99)'); } ctx.fillStyle = gradient; ctx.fillRect(0, 0, canvas.width, canvas.height); } }
+        }
+
+        function movePlayer(dx, dy) {
+            if (isTransitioning || isOutOfLives || isPaused) return false; let newX = player.x + dx, newY = player.y + dy;
+            if (mazeMap[newY][newX] === 3 && !hasKey) { if(holdDirs.length > 0 && dx === holdDirs[0].x && dy === holdDirs[0].y) { hideJoystick(); winMsg.innerHTML = "<span style='color:#f39c12; font-size:16px;'>Kilitli Kapı!</span>"; winMsg.classList.add('show-msg'); setTimeout(() => { winMsg.classList.remove('show-msg'); }, 1000); } return false; }
+            if (mazeMap[newY][newX] === 1) { if (isPickaxeActive && newX > 0 && newX < cols - 1 && newY > 0 && newY < rows - 1) { mazeMap[newY][newX] = 0; invPickaxe--; updateHUD(); isPickaxeActive = false; createParticles(newX, newY, '#78818a'); playSFX('hit'); triggerHaptic('hit'); return true; } else { return false; } }
+            if (mazeMap[newY][newX] !== 1) { 
+                let justTeleported = false;
+                teleporters.forEach(t => {
+                    if (newX === t.x1 && newY === t.y1) { newX = t.x2; newY = t.y2; justTeleported = true; }
+                    else if (newX === t.x2 && newY === t.y2) { newX = t.x1; newY = t.y1; justTeleported = true; }
+                });
+                if (justTeleported) { playerTrail = []; playSFX('win'); createParticles(newX, newY, '#9b59b6'); triggerHaptic('hit'); }
+                
+                playerTrail.push({ x: player.x, y: player.y }); if (playerTrail.length > 8) playerTrail.shift(); playerPathHistory.push({ x: newX, y: newY }); player.x = newX; player.y = newY;
+                powerUps.forEach(p => { if (p.active && player.x === p.x && player.y === p.y) { p.active = false; if(p.type === 'key') { hasKey = true; mazeMap[exitPos.y][exitPos.x] = 2; playSFX('win'); winMsg.innerHTML = "<span style='color:#2ecc71; font-size:18px;'>Kapı Açıldı! 🌀</span>"; winMsg.classList.add('show-msg'); setTimeout(() => { winMsg.classList.remove('show-msg'); }, 1000); createParticles(p.x, p.y, '#f1c40f'); } else if(p.type === 'pickaxe') { invPickaxe++; updateHUD(); createParticles(p.x, p.y, '#e67e22'); playSFX('coin'); } else if(p.type === 'gold') { gold += 2; updateQuestProgress('dq_gold', 2); updateQuestProgress('wq_gold', 2); updateHUD(); createParticles(p.x, p.y, '#f1c40f'); playSFX('coin'); } else { let pColor = p.type === 'shield' ? '#ffd700' : (p.type === 'life' ? '#ff4757' : '#00ffff'); createParticles(p.x, p.y, pColor); playSFX('coin'); if (p.type === 'life') { playerLives = Math.min(maxLives, playerLives + 1); localStorage.setItem('gd_lives', playerLives); updateLifeTimer(); } else { monsters.forEach(m => { if (p.type === 'freeze') m.frozenUntil = Date.now() + 3500; }); if (p.type === 'shield') hasShield = true; } } } });
+                let hitMonster = monsters.find(m => m.active && player.x === m.x && player.y === m.y && !(m.frozenUntil && Date.now() < m.frozenUntil)); if (hitMonster) { if (player.hasGhostPass) { player.hasGhostPass = false; hitMonster.frozenUntil = Date.now() + 1500; } else { killPlayer(); return false; } }
+                if (mazeMap[newY][newX] === 2) { isTransitioning = true; hideJoystick(); monsters.forEach(m => clearTimeout(m.timeout)); playSFX('win'); triggerHaptic('win'); let baseReward = 0, extraReward = 0, isFirstTime = (currentLevel === maxLevelReached); if (isFirstTime) { baseReward = 10; if (currentLevel % 10 === 0 && currentLevel === maxLevelReached) { extraReward = 50; } } let starsEarned = playerLives >= 8 ? 3 : (playerLives >= 4 ? 2 : 1); if (!levelStars[currentLevel] || starsEarned > levelStars[currentLevel]) { levelStars[currentLevel] = starsEarned; localStorage.setItem('gd_stars', JSON.stringify(levelStars)); } updateQuestProgress('dq_pass', 1); updateQuestProgress('wq_pass', 1); pendingReward = baseReward + extraReward; setTimeout(() => { showScreen('screen-reward'); document.getElementById('reward-stars').innerText = '⭐'.repeat(starsEarned) + '☆'.repeat(3 - starsEarned); if (isFirstTime) { document.getElementById('reward-gold-amount').innerText = "+" + pendingReward + " 💰"; document.getElementById('btn-multiply').style.display = "block"; } else { document.getElementById('reward-gold-amount').innerText = "Önceden Geçildi"; document.getElementById('btn-multiply').style.display = "none"; } }, 500); return true; } return true; 
+            } return false;
+        }
+
+        function renderLoop() { if(document.getElementById('screen-game').classList.contains('active')) { if(tileSize > 0 && mazeMap.length > 0) { if(!isPaused && !isTransitioning && !isOutOfLives) { let activeTrap = traps.find(t => t.x === player.x && t.y === player.y && t.isUp); if(activeTrap && !hasShield && !player.hasGhostPass) { killPlayer(); } } drawMaze(); } } requestAnimationFrame(renderLoop); }
+        requestAnimationFrame(renderLoop);
+
+        function updateLifeTimer() { let now = Date.now(); if (playerLives < maxLives && nextLifeTime === 0) { nextLifeTime = now + lifeRegenInterval; localStorage.setItem('gd_next_life', nextLifeTime); } if (nextLifeTime > 0 && now >= nextLifeTime) { let livesToAdd = Math.floor((now - nextLifeTime) / lifeRegenInterval) + 1; playerLives = Math.min(maxLives, playerLives + livesToAdd); localStorage.setItem('gd_lives', playerLives); if (playerLives >= maxLives) { nextLifeTime = 0; localStorage.removeItem('gd_next_life'); } else { let remainder = (now - nextLifeTime) % lifeRegenInterval; nextLifeTime = now + lifeRegenInterval - remainder; localStorage.setItem('gd_next_life', nextLifeTime); } if (isOutOfLives && playerLives > 0) { isOutOfLives = false; loseMsg.classList.remove('show-msg'); if(document.getElementById('screen-game').classList.contains('active')){ initLevel(); } } } if (playerLives >= maxLives) { hudLife.innerText = "CAN: " + playerLives + " ♥ (MAX)"; } else { let timeLeft = nextLifeTime - Date.now(); if (timeLeft < 0) timeLeft = 0; let m = Math.floor(timeLeft / 60000), s = Math.floor((timeLeft % 60000) / 1000); hudLife.innerText = "CAN: " + playerLives + " ♥ (" + (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s + ")"; if (isOutOfLives) loseMsg.classList.add('show-msg'); } }
+        setInterval(updateLifeTimer, 1000);
+
+        const vJoystick = document.getElementById('virtual-joystick'); const vKnob = document.getElementById('joystick-knob'); let joyStartX = 0; let joyStartY = 0; let isJoyActive = false; const maxJoyRadius = 45;
+        function handleJoyStart(e) { if (e.target.tagName.toLowerCase() === 'button' || e.target.closest('.action-btn') || e.target.closest('.inv-btn') || e.target.closest('.hud-gold-container') || e.target.closest('.hud-life-container')) return; let clientX = e.touches ? e.touches[0].clientX : e.clientX; let clientY = e.touches ? e.touches[0].clientY : e.clientY; joyStartX = clientX; joyStartY = clientY; isJoyActive = true; isHolding = true; vJoystick.style.display = 'block'; vJoystick.style.left = joyStartX + 'px'; vJoystick.style.top = joyStartY + 'px'; vKnob.style.transform = "translate(-50%, -50%)"; }
+        function handleJoyMove(e) { if (isJoyActive) { let clientX = e.touches ? e.touches[0].clientX : e.clientX; let clientY = e.touches ? e.touches[0].clientY : e.clientY; let dx = clientX - joyStartX, dy = clientY - joyStartY; let distance = Math.sqrt(dx * dx + dy * dy); if (distance > maxJoyRadius) { joyStartX = clientX - (dx / distance) * maxJoyRadius; joyStartY = clientY - (dy / distance) * maxJoyRadius; dx = clientX - joyStartX; dy = clientY - joyStartY; distance = maxJoyRadius; vJoystick.style.left = joyStartX + 'px'; vJoystick.style.top = joyStartY + 'px'; } vKnob.style.transform = "translate(calc(-50% + " + dx + "px), calc(-50% + " + dy + "px))"; if (distance > 5) { holdDirs = []; if (Math.abs(dx) > Math.abs(dy)) { holdDirs.push({ x: dx > 0 ? 1 : -1, y: 0 }); if (Math.abs(dy) > 5) holdDirs.push({ x: 0, y: dy > 0 ? 1 : -1 }); } else { holdDirs.push({ x: 0, y: dy > 0 ? 1 : -1 }); if (Math.abs(dx) > 5) holdDirs.push({ x: dx > 0 ? 1 : -1, y: 0 }); } } } }
+        function hideJoystick() { isJoyActive = false; isHolding = false; vJoystick.style.display = 'none'; holdDirs = []; }
+        canvasContainer.addEventListener('touchstart', handleJoyStart, { passive: true }); canvasContainer.addEventListener('touchmove', handleJoyMove, { passive: true }); canvasContainer.addEventListener('touchend', hideJoystick, { passive: true }); canvasContainer.addEventListener('touchcancel', hideJoystick, { passive: true }); canvasContainer.addEventListener('mousedown', handleJoyStart); window.addEventListener('mousemove', handleJoyMove); window.addEventListener('mouseup', hideJoystick);
+        window.addEventListener('keydown', (e) => { if (['ArrowUp', 'w', 'W'].includes(e.key)) { holdDirs = [{x:0, y:-1}]; isHolding = true; } if (['ArrowDown', 's', 'S'].includes(e.key)) { holdDirs = [{x:0, y:1}]; isHolding = true; } if (['ArrowLeft', 'a', 'A'].includes(e.key)) { holdDirs = [{x:-1, y:0}]; isHolding = true; } if (['ArrowRight', 'd', 'D'].includes(e.key)) { holdDirs = [{x:1, y:0}]; isHolding = true; } }); window.addEventListener('keyup', () => { hideJoystick(); });
+
+        // İLK YÜKLEME ÇAĞRILARI
+        showScreen('screen-menu'); 
+        updateCarousel();
+    </script>
+</body>
+</html>
